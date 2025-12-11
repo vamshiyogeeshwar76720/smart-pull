@@ -1,0 +1,34 @@
+{
+  "name": "smart-auto",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vamshiyogeeshwar-pixel/smart-auto.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vamshiyogeeshwar-pixel/smart-auto/issues"
+  },
+  "homepage": "https://github.com/vamshiyogeeshwar-pixel/smart-auto#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@types/node": "^22.19.1",
+    "hardhat": "2.27",
+    "typescript": "~5.8.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@chainlink/contracts": "^1.5.0",
+    "@openzeppelin/contracts": "^4.9.3",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.16.0",
+    "web3": "^4.16.0"
+  }
+}
