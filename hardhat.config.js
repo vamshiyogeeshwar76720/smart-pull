@@ -1,16 +1,15 @@
-import "@nomicfoundation/hardhat-ethers";
-import * as dotenv from "dotenv";
-dotenv.config();
+import "@nomiclabs/hardhat-ethers";
+import dotenv from "dotenv";
 
-export default {
-  solidity: "0.8.20", // or your contract version
+module.exports = {
+  solidity: "0.8.17",
   networks: {
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL,
+      url: `https://sepolia.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: [process.env.PRIVATE_KEY],
     },
     mainnet: {
-      url: process.env.MAINNET_RPC_URL,
+      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: [process.env.PRIVATE_KEY],
     },
   },
