@@ -5,14 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMI AutoPay - Receiver Panel</title>
-
     <link rel="stylesheet" href="style.css">
 
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script src="abi.js"></script>
-    <script src="receiver.js" defer></script>
+    <script src="config.js"></script> <!-- Multi-chain & tokens config -->
+    <script src="./receiver.js" defer></script>
 </head>
 
 <body>
@@ -31,9 +31,15 @@
     <div id="createPlan">
         <h2>Enter EMI Details</h2>
 
-        <input id="receiverAddress" placeholder="Receiver Address (0x...)" type="text">
+        <!-- Blockchain & Token Dropdowns -->
+        <label for="blockchainSelect">Select Blockchain:</label>
+        <select id="blockchainSelect"></select>
 
-        <input id="emiAmount" placeholder="EMI Amount (ETH)" type="text">
+        <label for="tokenSelect">Select Token:</label>
+        <select id="tokenSelect"></select>
+
+        <input id="receiverAddress" placeholder="Receiver Address (0x...)" type="text">
+        <input id="emiAmount" placeholder="EMI Amount" type="text">
 
         <select id="intervalSelect">
             <option value="3600">1 Hour</option>
@@ -47,8 +53,7 @@
         </select>
 
         <input id="customInterval" placeholder="Custom minutes" style="display:none">
-
-        <input id="totalAmount" placeholder="Total Amount (ETH)" type="text">
+        <input id="totalAmount" placeholder="Total Amount" type="text">
 
         <button id="createPlanBtn">Generate QR</button>
 
@@ -60,8 +65,12 @@
 
     <button onclick="window.location.href='wallets.html'">Connected Wallets</button>
 
+    <script>
+        function goBack() {
+            window.location.href = "./home.html";
+        }
+    </script>
 
-    <script src="script.js"></script>
 </body>
 
 </html>

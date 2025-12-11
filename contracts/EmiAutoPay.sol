@@ -2,29 +2,32 @@
 pragma solidity ^0.8.20;
 
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard, Ownable {
+contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
     event EmiPlanCreated(
+        uint256 indexed planId,
         address indexed sender,
         address indexed receiver,
+        address token,
         uint256 emiAmount,
         uint256 interval,
         uint256 totalAmount
     );
 
-    event DepositMade(address indexed sender, uint256 amount);
     event EmiPaid(
+        uint256 indexed planId,
         address indexed receiver,
         uint256 amount,
         uint256 nextPaymentTime
     );
-    event EmiCompleted(address indexed receiver);
+    event EmiCompleted(uint256 indexed planId, address indexed receiver);
 
     struct EmiPlan {
         address sender;
         address receiver;
+        address token;
         uint256 emiAmount;
         uint256 interval;
         uint256 totalAmount;
@@ -33,27 +36,27 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard, Ownable {
         bool isActive;
     }
 
-    EmiPlan public plan;
+    uint256 public planCounter;
+    mapping(uint256 => EmiPlan) public plans;
 
-    mapping(address => uint256) public senderDeposits;
-
-    // ------------------------------
-    // SENDER CREATES EMI PLAN
-    // ------------------------------
     function createEmiPlan(
         address receiver,
+        address token,
         uint256 emiAmount,
         uint256 interval,
         uint256 totalAmount
     ) external {
         require(receiver != address(0), "Invalid receiver");
-        require(emiAmount > 0, "Invalid EMI");
-        require(totalAmount > emiAmount, "Total < EMI");
-        require(interval >= 60, "Interval too small");
+        require(token != address(0), "Invalid token");
+        require(emiAmount > 0, "Invalid EMI amount");
+        require(totalAmount >= emiAmount, "Total < EMI");
+        require(interval >= 60, "Interval at least 1 minute");
 
-        plan = EmiPlan({
+        planCounter++;
+        plans[planCounter] = EmiPlan({
             sender: msg.sender,
             receiver: receiver,
+            token: token,
             emiAmount: emiAmount,
             interval: interval,
             totalAmount: totalAmount,
@@ -63,68 +66,64 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard, Ownable {
         });
 
         emit EmiPlanCreated(
+            planCounter,
             msg.sender,
             receiver,
+            token,
             emiAmount,
             interval,
             totalAmount
         );
     }
 
-    // ------------------------------
-    // SENDER DEPOSITS FUNDS
-    // ------------------------------
-    function depositFunds() external payable nonReentrant {
-        require(plan.isActive, "No active plan");
-        require(msg.sender == plan.sender, "Not EMI sender");
-
-        senderDeposits[msg.sender] += msg.value;
-        emit DepositMade(msg.sender, msg.value);
-    }
-
-    function getSenderDeposit(address s) external view returns (uint256) {
-        return senderDeposits[s];
-    }
-
-    // ------------------------------
-    // CHAINLINK CHECK
-    // ------------------------------
     function checkUpkeep(
         bytes calldata
     ) external view override returns (bool upkeepNeeded, bytes memory) {
-        upkeepNeeded =
-            plan.isActive &&
-            senderDeposits[plan.sender] >= plan.emiAmount &&
-            block.timestamp >= plan.nextPaymentTime;
-    }
-
-    // ------------------------------
-    // CHAINLINK PERFORM
-    // ------------------------------
-    function performUpkeep(bytes calldata) external override nonReentrant {
-        if (
-            plan.isActive &&
-            senderDeposits[plan.sender] >= plan.emiAmount &&
-            block.timestamp >= plan.nextPaymentTime
-        ) {
-            senderDeposits[plan.sender] -= plan.emiAmount;
-            payable(plan.receiver).transfer(plan.emiAmount);
-
-            plan.amountPaid += plan.emiAmount;
-
-            if (plan.amountPaid >= plan.totalAmount) {
-                plan.isActive = false;
-                emit EmiCompleted(plan.receiver);
-                return;
+        for (uint256 i = 1; i <= planCounter; i++) {
+            EmiPlan storage plan = plans[i];
+            if (
+                plan.isActive &&
+                plan.amountPaid < plan.totalAmount &&
+                block.timestamp >= plan.nextPaymentTime &&
+                IERC20(plan.token).allowance(plan.sender, address(this)) >=
+                plan.emiAmount &&
+                IERC20(plan.token).balanceOf(plan.sender) >= plan.emiAmount
+            ) {
+                upkeepNeeded = true;
+                return (true, abi.encode(i));
             }
-
-            plan.nextPaymentTime = block.timestamp + plan.interval;
-
-            emit EmiPaid(plan.receiver, plan.emiAmount, plan.nextPaymentTime);
         }
+        upkeepNeeded = false;
     }
 
-    function getContractBalance() external view returns (uint256) {
-        return address(this).balance;
+    function performUpkeep(
+        bytes calldata performData
+    ) external override nonReentrant {
+        uint256 planId = abi.decode(performData, (uint256));
+        EmiPlan storage plan = plans[planId];
+        require(plan.isActive, "Plan not active");
+        require(block.timestamp >= plan.nextPaymentTime, "Too early");
+
+        IERC20 token = IERC20(plan.token);
+        require(
+            token.transferFrom(plan.sender, plan.receiver, plan.emiAmount),
+            "Transfer failed"
+        );
+
+        plan.amountPaid += plan.emiAmount;
+
+        if (plan.amountPaid >= plan.totalAmount) {
+            plan.isActive = false;
+            emit EmiCompleted(planId, plan.receiver);
+            return;
+        }
+
+        plan.nextPaymentTime = block.timestamp + plan.interval;
+        emit EmiPaid(
+            planId,
+            plan.receiver,
+            plan.emiAmount,
+            plan.nextPaymentTime
+        );
     }
 }

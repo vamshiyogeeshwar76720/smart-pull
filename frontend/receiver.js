@@ -1,3 +1,8 @@
+import { AppConfig } from "./config.js";
+import { ethers } from "ethers";
+import QRCode from "qrcode";
+
+// Wallet Connect
 let provider, signer;
 
 document.getElementById("connectWalletBtn").onclick = async () => {
@@ -15,8 +20,6 @@ document.getElementById("connectWalletBtn").onclick = async () => {
     document.getElementById("network").innerText = "Network: " + network.name;
 
     alert("Wallet Connected!");
-
-    // Save to history (for wallets.html table)
     saveWalletHistory(account);
   } catch (e) {
     console.error(e);
@@ -24,70 +27,40 @@ document.getElementById("connectWalletBtn").onclick = async () => {
   }
 };
 
-async function autoReconnectWallet() {
-  const storedWallet = JSON.parse(localStorage.getItem("connectedWallet"));
-  if (!storedWallet) return;
+// Populate blockchain dropdown
+const blockchainSelect = document.createElement("select");
+blockchainSelect.id = "blockchainSelect";
+document.getElementById("createPlan").prepend(blockchainSelect);
 
-  if (!window.ethereum) return;
+Object.keys(AppConfig.CHAINS).forEach((key) => {
+  const opt = document.createElement("option");
+  opt.value = key;
+  opt.text = AppConfig.CHAINS[key].name;
+  blockchainSelect.appendChild(opt);
+});
 
-  try {
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
+// Populate token dropdown dynamically
+const tokenSelect = document.createElement("select");
+tokenSelect.id = "tokenSelect";
+document.getElementById("createPlan").prepend(tokenSelect);
 
-    const account = await signer.getAddress();
-    if (account.toLowerCase() !== storedWallet.address.toLowerCase()) {
-      // If the current MetaMask account is different, clear localStorage
-      localStorage.removeItem("connectedWallet");
-      return;
-    }
+blockchainSelect.addEventListener("change", populateTokens);
 
-    const network = await provider.getNetwork();
-    const netName = network.name.toLowerCase();
-
-    document.getElementById("account").innerText = "Wallet: " + account;
-    document.getElementById("networkName").value = netName;
-
-    if (!contracts[netName]) return;
-
-    contract = new ethers.Contract(
-      contracts[netName].address,
-      contracts[netName].abi,
-      signer
-    );
-
-    updateButtonStates(true);
-    console.log("Wallet reconnected automatically!");
-  } catch (err) {
-    console.error(err);
-    localStorage.removeItem("connectedWallet");
+function populateTokens() {
+  tokenSelect.innerHTML = "";
+  const tokens = AppConfig.getTokens(blockchainSelect.value);
+  for (const tokenName in tokens) {
+    const opt = document.createElement("option");
+    opt.value = tokens[tokenName]; // contract address
+    opt.text = tokenName;
+    tokenSelect.appendChild(opt);
   }
+  // Automatically select the first token
+  if (tokenSelect.options.length > 0) tokenSelect.selectedIndex = 0;
 }
 
-// Call it on page load
-window.addEventListener("load", autoReconnectWallet);
-
-// --------------------------------------
-// SAVE CONNECTED WALLET IN HISTORY
-// --------------------------------------
-function saveWalletHistory(address) {
-  const list = JSON.parse(localStorage.getItem("walletHistory") || "[]");
-
-  const now = new Date();
-  const entry = {
-    address,
-    date: now.toLocaleDateString(),
-    time: now.toLocaleTimeString(),
-  };
-
-  // Avoid duplicates
-  const exists = list.find(
-    (w) => w.address.toLowerCase() === address.toLowerCase()
-  );
-  if (!exists) {
-    list.push(entry);
-    localStorage.setItem("walletHistory", JSON.stringify(list));
-  }
-}
+// Initialize tokens for default blockchain
+populateTokens();
 
 // Show/Hide custom interval
 document.getElementById("intervalSelect").addEventListener("change", () => {
@@ -98,82 +71,64 @@ document.getElementById("intervalSelect").addEventListener("change", () => {
 });
 
 // Generate QR
-// document.getElementById("createPlanBtn").onclick = async () => {
-//   try {
-//     const receiver = await signer.getAddress();
-//     const emi = document.getElementById("emiAmount").value;
-//     const total = document.getElementById("totalAmount").value;
-
-//     let interval = document.getElementById("intervalSelect").value;
-//     if (interval === "custom") {
-//       interval = Number(document.getElementById("customInterval").value) * 60;
-//     }
-
-//     const qrData = JSON.stringify({
-//       receiver,
-//       emiAmount: emi,
-//       interval,
-//       totalAmount: total,
-//     });
-
-//     new QRCode(document.getElementById("qrCode"), {
-//       text: qrData,
-//       width: 220,
-//       height: 220,
-//     });
-
-//     alert("QR Generated Successfully!");
-//   } catch (err) {
-//     console.error(err);
-//     alert("Error generating QR");
-//   }
-// };
-
-// Generate QR
 document.getElementById("createPlanBtn").onclick = async () => {
   try {
-    // Get receiver address from input
     const receiverAddress = document.getElementById("receiverAddress").value;
-    if (!ethers.utils.isAddress(receiverAddress)) {
-      return alert("Please enter a valid Ethereum address");
-    }
+    if (!ethers.utils.isAddress(receiverAddress))
+      return alert("Invalid receiver address");
 
-    // Get EMI amount
     const emiAmount = document.getElementById("emiAmount").value;
-    if (!emiAmount || isNaN(emiAmount) || Number(emiAmount) <= 0) {
-      return alert("Please enter a valid EMI amount");
-    }
+    if (!emiAmount || isNaN(emiAmount) || Number(emiAmount) <= 0)
+      return alert("Invalid EMI amount");
 
     let interval = document.getElementById("intervalSelect").value;
-    if (interval === "custom") {
+    if (interval === "custom")
       interval = Number(document.getElementById("customInterval").value) * 60;
-      if (!interval || interval <= 0)
-        return alert("Enter a valid custom interval");
-    } else {
-      interval = Number(interval);
-    }
+    else interval = Number(interval);
 
     const totalAmount = document.getElementById("totalAmount").value;
     if (!totalAmount || isNaN(totalAmount) || Number(totalAmount) <= 0)
-      return alert("Enter a valid total amount");
+      return alert("Invalid total amount");
 
-    // Convert ETH to wei
-    const weiAmount = ethers.utils.parseEther(emiAmount);
+    const blockchain = blockchainSelect.value;
+    const tokenAddress = tokenSelect.value;
+    const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
+    const emiContract = AppConfig.getEmiContract(blockchain); // NEW: get contract dynamically
 
-    // Create Ethereum URI (EIP-681 format)
-    const ethereumURI = `ethereum:${receiverAddress}?value=${weiAmount.toString()}`;
+    const qrData = JSON.stringify({
+      blockchain,
+      token: tokenSymbol,
+      tokenAddress,
+      emiAmount,
+      totalAmount,
+      interval,
+      receiver: receiverAddress,
+      emiContract,
+    });
 
-    // Generate QR code
-    document.getElementById("qrCode").innerHTML = ""; // Clear previous QR
+    document.getElementById("qrCode").innerHTML = "";
     new QRCode(document.getElementById("qrCode"), {
-      text: ethereumURI,
+      text: qrData,
       width: 220,
       height: 220,
     });
 
-    alert("QR Generated Successfully! Scan it in MetaMask to pay.");
+    alert("QR Generated Successfully!");
   } catch (err) {
     console.error(err);
     alert("Error generating QR");
   }
 };
+
+// Save wallet history
+function saveWalletHistory(address) {
+  const list = JSON.parse(localStorage.getItem("walletHistory") || "[]");
+  if (!list.find((w) => w.address.toLowerCase() === address.toLowerCase())) {
+    list.push({
+      address,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+    });
+    localStorage.setItem("walletHistory", JSON.stringify(list));
+  }
+}

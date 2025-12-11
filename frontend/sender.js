@@ -1,54 +1,35 @@
+import { AppConfig } from "./config.js";
+import { ethers } from "ethers";
+import { Html5Qrcode } from "html5-qrcode";
+
 let provider, signer, contract;
 let scannedData = null;
+const html5QrCode = new Html5Qrcode("reader");
 
-const contractAddress = "YOUR_NEW_DEPLOYED_ADDRESS_HERE";
-
-const contracts = {
-  sepolia: {
-    address: contractAddress,
-    abi: contractABI,
-  },
-};
-
-// ---------------------------
-// INITIALIZE WALLET
-// ---------------------------
-async function initWallet() {
-  if (!window.ethereum) {
-    alert("Please install MetaMask");
-    return;
-  }
+// Initialize wallet & contract
+async function initWallet(chainKey) {
+  if (!window.ethereum) return alert("Install MetaMask");
 
   provider = new ethers.providers.Web3Provider(window.ethereum);
   await provider.send("eth_requestAccounts", []);
   signer = provider.getSigner();
 
-  const network = await provider.getNetwork();
-  if (!contracts[network.name.toLowerCase()]) {
-    alert("Unsupported network");
-    return;
-  }
+  const rpcUrl = AppConfig.getRpc(chainKey);
+  const contractAddress = AppConfig.getEmiContract(chainKey);
+
+  if (!contractAddress)
+    return alert("EMI Contract not configured for this chain");
 
   contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-  console.log("Wallet OK");
+  console.log(`Wallet ready on ${chainKey}, contract: ${contractAddress}`);
 }
 
-initWallet();
-
-// ---------------------------
-// QR SCANNER SETUP
-// ---------------------------
-const html5QrCode = new Html5Qrcode("reader");
-
+// QR scanner
 html5QrCode.start(
   { facingMode: "environment" },
-  {
-    fps: 10,
-    qrbox: 250,
-  },
+  { fps: 10, qrbox: 250 },
   (decodedText) => {
-    console.log("QR Data:", decodedText);
     try {
       scannedData = JSON.parse(decodedText);
 
@@ -57,34 +38,40 @@ html5QrCode.start(
       document.getElementById("qrInterval").innerText =
         scannedData.interval + " sec";
       document.getElementById("qrTotal").innerText = scannedData.totalAmount;
+      document.getElementById("qrBlockchain").innerText =
+        scannedData.blockchain;
+      document.getElementById("qrToken").innerText = scannedData.token;
 
       document.getElementById("infoBox").style.display = "block";
 
       html5QrCode.stop();
     } catch (err) {
       alert("Invalid QR Code");
+      console.error(err);
     }
   },
   (err) => {}
 );
 
-// ---------------------------
-// CREATE PLAN FROM QR
-// ---------------------------
+// Create EMI Plan
 document.getElementById("createPlanBtn").onclick = async () => {
   try {
-    const emi = ethers.utils.parseEther(scannedData.emiAmount);
-    const total = ethers.utils.parseEther(scannedData.totalAmount);
+    if (!scannedData) return alert("No QR data");
+
+    await initWallet(scannedData.blockchain);
+
+    const emi = ethers.utils.parseUnits(scannedData.emiAmount, 18);
+    const total = ethers.utils.parseUnits(scannedData.totalAmount, 18);
 
     const tx = await contract.createEmiPlan(
       scannedData.receiver,
+      scannedData.tokenAddress,
       emi,
       scannedData.interval,
       total
     );
 
     await tx.wait();
-
     alert("EMI Plan Created Successfully!");
   } catch (err) {
     console.error(err);
