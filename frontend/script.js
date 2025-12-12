@@ -1,12 +1,12 @@
 function goToSubscription() {
-  window.location.href = "/frontend/home.html";
+  window.location.href = "/home.html";
 }
 function goHome() {
-  window.location.href = "/index.html";
+  window.location.href = "./index.html";
 }
 
 function goBack() {
-  window.location.href = "/frontend/home.html";
+  window.location.href = "./home.html";
 }
 
 function closeProfileMenu() {
