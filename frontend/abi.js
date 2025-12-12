@@ -1,4 +1,4 @@
-const contractABI = [
+export const contractABI = [
   {
     anonymous: false,
     inputs: [
@@ -130,11 +130,12 @@ const contractABI = [
   },
   {
     inputs: [
-      { internalType: "address", name: "_sender", type: "address" },
-      { internalType: "uint256", name: "_emiAmount", type: "uint256" },
-      { internalType: "uint256", name: "_interval", type: "uint256" },
-      { internalType: "uint256", name: "_totalAmount", type: "uint256" },
-      { internalType: "string", name: "_senderNetwork", type: "string" },
+      { internalType: "address", name: "receiver", type: "address" },
+      { internalType: "string", name: "receiverNetwork", type: "string" },
+      { internalType: "address", name: "tokenAddress", type: "address" },
+      { internalType: "uint256", name: "emiAmount", type: "uint256" },
+      { internalType: "uint256", name: "interval", type: "uint256" },
+      { internalType: "uint256", name: "totalAmount", type: "uint256" },
     ],
     name: "createEmiPlan",
     outputs: [],

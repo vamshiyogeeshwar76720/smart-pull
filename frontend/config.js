@@ -108,6 +108,14 @@ function getEmiContract(chainKey) {
   return chain[ENV].emiContract;
 }
 
+// Add this to your AppConfig export in config.js
+const TOKEN_DECIMALS = {
+  USDT: 6,
+  DAI: 18,
+  WETH: 18,
+  BUSD: 18,
+};
+
 // Export configuration for frontend
 export const AppConfig = {
   ENV,
@@ -115,4 +123,5 @@ export const AppConfig = {
   getTokens,
   getRpc,
   getEmiContract,
+  TOKEN_DECIMALS,
 };

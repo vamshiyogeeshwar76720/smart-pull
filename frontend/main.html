@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-    <script src="abi.js"></script>
+    <!-- <script src="./abi.js"></script> -->
 
     <script type="module" src="./receiver.js" defer></script>
 </head>
@@ -22,6 +22,11 @@
 
     <div id="wallet">
         <button id="connectWalletBtn">Connect Wallet</button>
+        <!-- Add this button below Connect Wallet -->
+        <button id="disconnectWalletBtn" style="display:none;">Disconnect Wallet</button>
+
+
+
         <p id="account"></p>
         <p id="network"></p>
     </div>
@@ -31,16 +36,28 @@
     <div id="createPlan">
         <h2>Enter EMI Details</h2>
 
-        <!-- Blockchain & Token Dropdowns -->
+        <!-- Blockchain Dropdown -->
         <label for="blockchainSelect">Select Blockchain:</label>
         <select id="blockchainSelect"></select>
 
+        <!-- Token Dropdown -->
         <label for="tokenSelect">Select Token:</label>
         <select id="tokenSelect"></select>
+        
+        <!-- Auto-populated Token Address -->
+        <label for="tokenAddressDisplay">Token Address:</label>
+        <input id="tokenAddressDisplay" type="text" disabled placeholder="Token address auto-filled">
+
 
         <input id="receiverAddress" placeholder="Receiver Address (0x...)" type="text">
-        <input id="emiAmount" placeholder="EMI Amount" type="text">
 
+        <!-- Receiver Network Auto-Filled -->
+        <label>Receiver Network:</label>
+        <input id="receiverNetworkInput" placeholder="Connect wallet to auto-fill" type="text" disabled>
+
+        <input id="emiAmount" placeholder="EMI Amount" type="number">
+
+        <label>Payment Interval:</label>
         <select id="intervalSelect">
             <option value="3600">1 Hour</option>
             <option value="10800">3 Hours</option>
@@ -53,7 +70,8 @@
         </select>
 
         <input id="customInterval" placeholder="Custom minutes" style="display:none">
-        <input id="totalAmount" placeholder="Total Amount" type="text">
+
+        <input id="totalAmount" placeholder="Total Amount" type="number">
 
         <button id="createPlanBtn">Generate QR</button>
 
@@ -71,47 +89,17 @@
         }
     </script>
 
-    <script type="module">
-        import { AppConfig } from "./config.js";
-
-        const blockchainSelect = document.getElementById("blockchainSelect");
-        const tokenSelect = document.getElementById("tokenSelect");
-
-        // Populate blockchain dropdown
-        Object.keys(AppConfig.CHAINS).forEach((key) => {
-            const opt = document.createElement("option");
-            opt.value = key;
-            opt.text = AppConfig.CHAINS[key].name;
-            blockchainSelect.appendChild(opt);
-        });
-
-        // Pre-select Ethereum
-        blockchainSelect.value = "ethereum";
-
-        // Populate token dropdown based on selected blockchain
-        function populateTokens() {
-            const chainKey = blockchainSelect.value;
-            tokenSelect.innerHTML = "";
-            const tokens = AppConfig.getTokens(chainKey);
-
-            for (const tokenName in tokens) {
-                const opt = document.createElement("option");
-                opt.value = tokens[tokenName]; // contract address
-                opt.text = tokenName;
-                tokenSelect.appendChild(opt);
+    <script>
+        // Keep receiverNetworkInput updated
+        const netInput = document.getElementById("receiverNetworkInput");
+        const observer = new MutationObserver(() => {
+            const walletNet = document.getElementById("network").innerText;
+            if (walletNet.includes("Network:")) {
+                netInput.value = walletNet.replace("Network: ", "").split(" ")[0];
             }
-
-            // Pre-select USDT
-            tokenSelect.value = tokens["USDT"];
-        }
-
-        // Initial token population
-        populateTokens();
-
-        // Update token dropdown if blockchain changes
-        blockchainSelect.addEventListener("change", populateTokens);
+        });
+        observer.observe(document.getElementById("network"), { childList: true });
     </script>
-
 </body>
 
 </html>
