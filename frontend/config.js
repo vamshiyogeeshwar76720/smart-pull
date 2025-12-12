@@ -20,15 +20,15 @@ const CHAINS = {
     },
     tokens: {
       USDT: {
-        testnet: "0xYourSepoliaUSDTAddress",
+        testnet: "0xCA19B5186a12fc7016091fb7c03988C190a32743",
         mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       },
       DAI: {
-        testnet: "0xYourSepoliaDAIAddress",
+        testnet: "0x0A73D469659C79Af3F7Aa77bBcCe76c5BD6eA91e",
         mainnet: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
       },
       WETH: {
-        testnet: "0xYourSepoliaWETHAddress",
+        testnet: "0x554e526A3a8490Ed840115972424bEB1D284C838",
         mainnet: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       },
     },

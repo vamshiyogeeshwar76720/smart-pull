@@ -19,13 +19,16 @@
   "homepage": "https://github.com/vamshiyogeeshwar76720/smart-pull#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@openzeppelin/contracts": "^4.9.3",
     "dotenv": "^17.2.3",
     "ethers": "^5.8.0",
-    "hardhat": "^2.17.0"
+    "hardhat": "^2.27.2"
   },
   "type": "module",
   "dependencies": {
-    "@chainlink/contracts": "^1.5.0",
-    "@openzeppelin/contracts": "^4.9.3"
+    "@chainlink/contracts": "^1.5.0"
+  },
+  "directories": {
+    "test": "test"
   }
 }
