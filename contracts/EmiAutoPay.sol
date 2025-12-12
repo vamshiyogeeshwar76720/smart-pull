@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-gti 
+
 contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
     event EmiPlanCreated(
         uint256 indexed planId,
@@ -157,4 +157,5 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
             plan.emiAmount,
             plan.nextPaymentTime
         );
-    }
+    }
+}

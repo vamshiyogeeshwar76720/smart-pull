@@ -1,15 +1,13 @@
 function goToSubscription() {
-  window.location.href = "home.html";
+  window.location.href = "/frontend/home.html";
 }
 function goHome() {
-  window.location.href = "index.html";
+  window.location.href = "/index.html";
 }
 
 function goBack() {
-  window.location.href = "./home.html";
+  window.location.href = "/frontend/home.html";
 }
-
-
 
 function closeProfileMenu() {
   document.getElementById("profileDropdown").style.display = "none";
