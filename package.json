@@ -18,10 +18,10 @@
   },
   "homepage": "https://github.com/vamshiyogeeshwar76720/smart-pull#readme",
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4.0.3",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
     "dotenv": "^17.2.3",
-    "ethers": "^6.16.0",
-    "hardhat": "^3.1.0"
+    "ethers": "^5.8.0",
+    "hardhat": "^2.17.0"
   },
   "type": "module",
   "dependencies": {

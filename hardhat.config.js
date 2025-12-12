@@ -1,16 +1,35 @@
 import "@nomiclabs/hardhat-ethers";
-import dotenv from "dotenv";
+import "dotenv/config";
 
-module.exports = {
-  solidity: "0.8.17",
+const { SEPOLIA_RPC, ETH_MAINNET_RPC, BSC_TESTNET_RPC, BSC_MAINNET_RPC, MUMBAI_RPC, POLYGON_MAINNET_RPC, PRIVATE_KEY, ENV } = process.env;
+
+export default {
+  solidity: "0.8.20",
+  defaultNetwork: ENV === "mainnet" ? "ethereumMainnet" : "ethereumSepolia",
   networks: {
-    sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: [process.env.PRIVATE_KEY],
+    ethereumSepolia: {
+      url: SEPOLIA_RPC,
+      accounts: [PRIVATE_KEY],
     },
-    mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: [process.env.PRIVATE_KEY],
+    ethereumMainnet: {
+      url: ETH_MAINNET_RPC,
+      accounts: [PRIVATE_KEY],
+    },
+    bscTestnet: {
+      url: BSC_TESTNET_RPC,
+      accounts: [PRIVATE_KEY],
+    },
+    bscMainnet: {
+      url: BSC_MAINNET_RPC,
+      accounts: [PRIVATE_KEY],
+    },
+    polygonMumbai: {
+      url: MUMBAI_RPC,
+      accounts: [PRIVATE_KEY],
+    },
+    polygonMainnet: {
+      url: POLYGON_MAINNET_RPC,
+      accounts: [PRIVATE_KEY],
     },
   },
 };

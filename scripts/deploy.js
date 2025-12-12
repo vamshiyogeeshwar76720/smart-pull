@@ -1,19 +1,18 @@
-import { ethers } from "hardhat";
-import "dotenv/config";
-
+// const hre = require("hardhat");
+import hre from "hardhat";
+const { ethers } = hre;
 async function main() {
-  console.log("Deploying EmiAutoPay contract...");
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying contracts with account:", deployer.address);
 
-  const EmiAutoPay = await ethers.getContractFactory("EmiAutoPay");
-  const emiAutoPay = await EmiAutoPay.deploy();
+  const Emi = await ethers.getContractFactory("EmiAutoPay");
+  const emi = await Emi.deploy();
 
-  await emiAutoPay.deployed();
-  console.log(`EmiAutoPay deployed at: ${emiAutoPay.address}`);
+  await emi.deployed();
+  console.log("EmiToken deployed to:", emi.address);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

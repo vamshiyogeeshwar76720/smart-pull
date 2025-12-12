@@ -3,14 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Scan EMI Plan QR</title>
+    <title>Scan EMI QR</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script type="module" src="sender.js"></script>
 
-    <script src="abi.js"></script>
-
-    <script type="module" src="sender.js" defer></script>
     <link rel="stylesheet" href="style.css">
 
     <style>
@@ -25,13 +22,9 @@
         }
 
         #infoBox {
-            margin-top: 20px;
-            padding: 10px;
+            display: none;
             border: 1px solid #ccc;
-        }
-
-        button {
-            padding: 10px 16px;
+            padding: 20px;
             margin-top: 20px;
         }
     </style>
@@ -39,30 +32,23 @@
 
 <body>
 
-    <button class="home-btn back-btn" onclick="goBack()">Back</button>
-
-    <h1>Scan EMI QR Code</h1>
-    <p>This will read EMI details and allow you to create the EMI plan.</p>
+    <h1>Scan EMI QR</h1>
+    <p>The sender does NOT need to connect wallet or use the app.</p>
 
     <div id="reader"></div>
 
-    <div id="infoBox" style="display:none;">
-        <h3>EMI Details Found:</h3>
+    <div id="infoBox">
+        <h3>EMI Details:</h3>
         <p><b>Blockchain:</b> <span id="qrBlockchain"></span></p>
         <p><b>Token:</b> <span id="qrToken"></span></p>
-        <p><b>Receiver:</b> <span id="qrReceiver"></span></p>
-        <p><b>EMI Amount:</b> <span id="qrEmi"></span></p>
-        <p><b>Interval:</b> <span id="qrInterval"></span></p>
-        <p><b>Total Amount:</b> <span id="qrTotal"></span></p>
+        <p><b>Receiver Address:</b> <span id="qrReceiver"></span></p>
 
-        <button id="createPlanBtn">Create EMI Plan</button>
+        <hr>
+
+        <p><b>Next Step:</b></p>
+        <p>Send the FIRST PAYMENT manually to the receiver address using your wallet app (MetaMask, TrustWallet, etc.).
+        </p>
     </div>
-
-    <script>
-        function goBack() {
-            window.location.href = "./home.html";
-        }
-    </script>
 
 </body>
 

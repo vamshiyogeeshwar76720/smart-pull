@@ -1,34 +1,25 @@
 import { AppConfig } from "./config.js";
+import { contractABI } from "./abi.js";
 
-// Wallet Connect
 let provider, signer;
 
+// Connect wallet
 document.getElementById("connectWalletBtn").onclick = async () => {
-  try {
-    if (!window.ethereum) return alert("Install MetaMask");
+  if (!window.ethereum) return alert("Install MetaMask");
 
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    const accounts = await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
 
-    const account = await signer.getAddress();
-    document.getElementById("account").innerText = "Wallet: " + account;
+  document.getElementById("account").innerText =
+    "Wallet: " + (await signer.getAddress());
 
-    const network = await provider.getNetwork();
-    document.getElementById("network").innerText = "Network: " + network.name;
-
-    alert("Wallet Connected!");
-    saveWalletHistory(account);
-  } catch (e) {
-    console.error(e);
-    alert("Failed to connect wallet");
-  }
+  alert("Wallet Connected!");
 };
 
-// Populate blockchain dropdown
-const blockchainSelect = document.createElement("select");
-blockchainSelect.id = "blockchainSelect";
-document.getElementById("createPlan").prepend(blockchainSelect);
+// Populate dropdowns
+const blockchainSelect = document.getElementById("blockchainSelect");
+const tokenSelect = document.getElementById("tokenSelect");
 
 Object.keys(AppConfig.CHAINS).forEach((key) => {
   const opt = document.createElement("option");
@@ -37,71 +28,60 @@ Object.keys(AppConfig.CHAINS).forEach((key) => {
   blockchainSelect.appendChild(opt);
 });
 
-// Populate token dropdown dynamically
-const tokenSelect = document.createElement("select");
-tokenSelect.id = "tokenSelect";
-document.getElementById("createPlan").prepend(tokenSelect);
-
-blockchainSelect.addEventListener("change", populateTokens);
-
 function populateTokens() {
   tokenSelect.innerHTML = "";
   const tokens = AppConfig.getTokens(blockchainSelect.value);
-  for (const tokenName in tokens) {
+
+  for (const t in tokens) {
     const opt = document.createElement("option");
-    opt.value = tokens[tokenName]; // contract address
-    opt.text = tokenName;
+    opt.value = tokens[t];
+    opt.text = t;
     tokenSelect.appendChild(opt);
   }
-  // Automatically select the first token
-  if (tokenSelect.options.length > 0) tokenSelect.selectedIndex = 0;
 }
-
-// Initialize tokens for default blockchain
 populateTokens();
+blockchainSelect.addEventListener("change", populateTokens);
 
-// Show/Hide custom interval
-document.getElementById("intervalSelect").addEventListener("change", () => {
-  document.getElementById("customInterval").style.display =
-    document.getElementById("intervalSelect").value === "custom"
-      ? "block"
-      : "none";
-});
-
-// Generate QR
+// Create plan + QR
 document.getElementById("createPlanBtn").onclick = async () => {
   try {
-    const receiverAddress = document.getElementById("receiverAddress").value;
-    if (!ethers.utils.isAddress(receiverAddress))
-      return alert("Invalid receiver address");
+    if (!signer) return alert("Connect wallet first");
 
+    const receiver = document.getElementById("receiverAddress").value;
     const emiAmount = document.getElementById("emiAmount").value;
-    if (!emiAmount || isNaN(emiAmount) || Number(emiAmount) <= 0)
-      return alert("Invalid EMI amount");
+    const totalAmount = document.getElementById("totalAmount").value;
 
     let interval = document.getElementById("intervalSelect").value;
-    if (interval === "custom")
+    if (interval === "custom") {
       interval = Number(document.getElementById("customInterval").value) * 60;
-    else interval = Number(interval);
-
-    const totalAmount = document.getElementById("totalAmount").value;
-    if (!totalAmount || isNaN(totalAmount) || Number(totalAmount) <= 0)
-      return alert("Invalid total amount");
+    }
+    interval = Number(interval);
 
     const blockchain = blockchainSelect.value;
     const tokenAddress = tokenSelect.value;
     const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
-    const emiContract = AppConfig.getEmiContract(blockchain); // NEW: get contract dynamically
 
+    const contractAddress = AppConfig.getEmiContract(blockchain);
+    const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+    const emi = ethers.utils.parseUnits(emiAmount, 18);
+    const total = ethers.utils.parseUnits(totalAmount, 18);
+
+    const tx = await contract.createEmiPlan(
+      receiver,
+      tokenAddress,
+      emi,
+      interval,
+      total
+    );
+    const receipt = await tx.wait();
+    const planId = receipt.events[0].args.planId.toNumber();
+
+    // QR CONTAINS ONLY 3 FIELDS (VERY IMPORTANT)
     const qrData = JSON.stringify({
       blockchain,
       token: tokenSymbol,
-      tokenAddress,
-      emiAmount,
-      totalAmount,
-      interval,
-      receiver: receiverAddress,
-      emiContract,
+      receiver,
     });
 
     document.getElementById("qrCode").innerHTML = "";
@@ -111,22 +91,9 @@ document.getElementById("createPlanBtn").onclick = async () => {
       height: 220,
     });
 
-    alert("QR Generated Successfully!");
-  } catch (err) {
-    console.error(err);
-    alert("Error generating QR");
+    alert(`Plan Created! QR Ready.`);
+  } catch (e) {
+    console.error(e);
+    alert("Error creating plan");
   }
 };
-
-// Save wallet history
-function saveWalletHistory(address) {
-  const list = JSON.parse(localStorage.getItem("walletHistory") || "[]");
-  if (!list.find((w) => w.address.toLowerCase() === address.toLowerCase())) {
-    list.push({
-      address,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString(),
-    });
-    localStorage.setItem("walletHistory", JSON.stringify(list));
-  }
-}

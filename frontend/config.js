@@ -11,7 +11,7 @@ const CHAINS = {
     testnet: {
       name: "sepolia",
       rpc: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
-      emiContract: "0xYourSepoliaEmiContractAddress",
+      emiContract: "0x11CC64131afF3F47bC069A649e2828dbaC53eAEb",
     },
     mainnet: {
       name: "mainnet",
