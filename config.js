@@ -9,12 +9,12 @@ const CHAINS = {
     chainId: 1,
     testnet: {
       name: "sepolia",
-      rpc: process.env.SEPOLIA_RPC,
+      rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
       emiContract: "0x2069B742B289e375d84462146D1f4507150706a5", // update after deployment
     },
     mainnet: {
       name: "mainnet",
-      rpc: process.env.ETH_MAINNET_RPC,
+      rpc: "https://mainnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
       emiContract: "0xYourMainnetEmiContractAddress",
     },
     tokens: {
@@ -37,12 +37,12 @@ const CHAINS = {
     chainId: 56,
     testnet: {
       name: "bscTestnet",
-      rpc: process.env.BSC_TESTNET_RPC,
+      rpc: "https://bsc-testnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
       emiContract: "0xYourBscTestEmiContractAddress",
     },
     mainnet: {
       name: "bscMainnet",
-      rpc: process.env.BSC_MAINNET_RPC,
+      rpc: "https://bsc-dataseed.binance.org/",
       emiContract: "0xYourBscMainEmiContractAddress",
     },
     tokens: {
@@ -61,12 +61,12 @@ const CHAINS = {
     chainId: 137,
     testnet: {
       name: "mumbai",
-      rpc: process.env.MUMBAI_RPC,
+      rpc: "https://rpc-mumbai.maticvigil.com/",
       emiContract: "0xYourMumbaiEmiContractAddress",
     },
     mainnet: {
       name: "polygonMainnet",
-      rpc: process.env.POLYGON_MAINNET_RPC,
+      rpc: "https://polygon-rpc.com/",
       emiContract: "0xYourPolygonMainEmiContractAddress",
     },
     tokens: {

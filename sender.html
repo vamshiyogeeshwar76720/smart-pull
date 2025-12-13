@@ -4,58 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <title>Activate EMI Plan</title>
-
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <script type="module" src="sender.js"></script>
-
-    <link rel="stylesheet" href="style.css">
-
     <style>
         body {
             font-family: Arial;
             padding: 20px;
-        }
-
-        #reader {
-            width: 320px;
-            margin: auto;
-        }
-
-        #infoBox {
-            display: none;
-            border: 1px solid #ccc;
-            padding: 20px;
-            margin-top: 20px;
+            text-align: center;
         }
 
         #connectBtn {
-            display: block;
-            margin: 20px auto;
+            margin-top: 50px;
+            padding: 10px 20px;
+            font-size: 16px;
         }
     </style>
 </head>
 
 <body>
-
-    <h1>Scan EMI QR</h1>
-    <p>Scan the receiver's EMI plan QR to activate and start auto-pay.</p>
-
+    <h1>Activate EMI Plan</h1>
+    <p>Connect your wallet to proceed.</p>
     <button id="connectBtn">Connect Wallet</button>
-
-    <div id="reader"></div>
-
-    <div id="infoBox">
-        <h3>EMI Details:</h3>
-        <p><b>Blockchain:</b> <span id="qrBlockchain"></span></p>
-        <p><b>Token:</b> <span id="qrToken"></span></p>
-        <p><b>Receiver Address:</b> <span id="qrReceiver"></span></p>
-        <p><b>Plan ID:</b> <span id="qrPlanId"></span></p>
-
-        <hr>
-
-        <p id="activationStatus">Waiting to activate plan...</p>
-    </div>
-
 </body>
 
 </html>
