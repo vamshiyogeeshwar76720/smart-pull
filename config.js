@@ -10,7 +10,7 @@ const CHAINS = {
     testnet: {
       name: "sepolia",
       rpc: process.env.SEPOLIA_RPC,
-      emiContract: "0x11CC64131afF3F47bC069A649e2828dbaC53eAEb", // update after deployment
+      emiContract: "0x2069B742B289e375d84462146D1f4507150706a5", // update after deployment
     },
     mainnet: {
       name: "mainnet",
@@ -19,15 +19,15 @@ const CHAINS = {
     },
     tokens: {
       USDT: {
-        testnet: "0xCA19B5186a12fc7016091fb7c03988C190a32743",
+        testnet: "0x3fcf3143fb3bBDbD35C38B39747cE19BB446EC11",
         mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       },
       DAI: {
-        testnet: "0x0A73D469659C79Af3F7Aa77bBcCe76c5BD6eA91e",
+        testnet: "0x150A11Fc1cdB8a37603C7EA9A5D27Ba92A160e64",
         mainnet: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
       },
       WETH: {
-        testnet: "0x554e526A3a8490Ed840115972424bEB1D284C838",
+        testnet: "0xe94c30e5da9E4DF6f2c2fC835aF700BE670C7e52",
         mainnet: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       },
     },
