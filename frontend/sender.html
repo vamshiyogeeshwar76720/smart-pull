@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Scan EMI QR</title>
+    <title>Activate EMI Plan</title>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script type="module" src="sender.js"></script>
@@ -27,13 +27,20 @@
             padding: 20px;
             margin-top: 20px;
         }
+
+        #connectBtn {
+            display: block;
+            margin: 20px auto;
+        }
     </style>
 </head>
 
 <body>
 
     <h1>Scan EMI QR</h1>
-    <p>The sender does NOT need to connect wallet or use the app.</p>
+    <p>Scan the receiver's EMI plan QR to activate and start auto-pay.</p>
+
+    <button id="connectBtn">Connect Wallet</button>
 
     <div id="reader"></div>
 
@@ -42,12 +49,11 @@
         <p><b>Blockchain:</b> <span id="qrBlockchain"></span></p>
         <p><b>Token:</b> <span id="qrToken"></span></p>
         <p><b>Receiver Address:</b> <span id="qrReceiver"></span></p>
+        <p><b>Plan ID:</b> <span id="qrPlanId"></span></p>
 
         <hr>
 
-        <p><b>Next Step:</b></p>
-        <p>Send the FIRST PAYMENT manually to the receiver address using your wallet app (MetaMask, TrustWallet, etc.).
-        </p>
+        <p id="activationStatus">Waiting to activate plan...</p>
     </div>
 
 </body>

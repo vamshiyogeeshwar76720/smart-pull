@@ -28,7 +28,7 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
     event EmiCompleted(uint256 indexed planId, address indexed receiver);
 
     struct EmiPlan {
-        address sender;
+        address sender; // Will be set when sender scans link
         address receiver;
         string receiverNetwork;
         address tokenAddress;
@@ -43,7 +43,7 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
     uint256 public planCounter;
     mapping(uint256 => EmiPlan) public plans;
 
-    // RECEIVER CREATES PLAN (Inactive)
+    // Receiver creates plan (inactive)
     function createEmiPlan(
         address receiver,
         string memory receiverNetwork,
@@ -84,29 +84,30 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
         );
     }
 
-    // SENDER SENDS FIRST PAYMENT MANUALLY → RECEIVER CALLS THIS ONE TIME
-    function activatePlan(uint256 planId, address sender) external {
+    // Sender scans link → activates plan
+    function activatePlan(uint256 planId) external {
         EmiPlan storage plan = plans[planId];
-
         require(!plan.isActive, "Already active");
-        require(plan.sender == address(0), "Sender already locked");
-        require(sender != address(0), "Invalid sender");
+        require(plan.sender == address(0), "Sender already assigned");
 
-        // SET SENDER & START AUTO-DEBIT
-        plan.sender = sender;
+        plan.sender = msg.sender;
         plan.isActive = true;
         plan.nextPaymentTime = block.timestamp + plan.interval;
 
-        emit PlanActivated(planId, sender);
+        emit PlanActivated(planId, msg.sender);
     }
 
-    // CHAINLINK UPKEEP CHECK
+    // Chainlink check
     function checkUpkeep(
         bytes calldata
-    ) external view override returns (bool upkeepNeeded, bytes memory) {
+    )
+        external
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory performData)
+    {
         for (uint256 i = 1; i <= planCounter; i++) {
             EmiPlan storage plan = plans[i];
-
             if (
                 plan.isActive &&
                 plan.amountPaid < plan.totalAmount &&
@@ -125,7 +126,7 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
         return (false, "");
     }
 
-    // CHAINLINK AUTO-DEBIT
+    // Chainlink auto-pay
     function performUpkeep(
         bytes calldata performData
     ) external override nonReentrant {

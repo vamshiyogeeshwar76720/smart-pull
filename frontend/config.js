@@ -1,6 +1,5 @@
 // config.js
 
-// Change ENV to "testnet" or "mainnet" to switch easily
 const ENV = "testnet"; // or "mainnet"
 
 // Multi-chain and token configuration
@@ -10,12 +9,12 @@ const CHAINS = {
     chainId: 1,
     testnet: {
       name: "sepolia",
-      rpc: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
-      emiContract: "0x11CC64131afF3F47bC069A649e2828dbaC53eAEb",
+      rpc: process.env.SEPOLIA_RPC,
+      emiContract: "0x11CC64131afF3F47bC069A649e2828dbaC53eAEb", // update after deployment
     },
     mainnet: {
       name: "mainnet",
-      rpc: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+      rpc: process.env.ETH_MAINNET_RPC,
       emiContract: "0xYourMainnetEmiContractAddress",
     },
     tokens: {
@@ -38,12 +37,12 @@ const CHAINS = {
     chainId: 56,
     testnet: {
       name: "bscTestnet",
-      rpc: "https://data-seed-prebsc-1-s1.binance.org:8545/",
+      rpc: process.env.BSC_TESTNET_RPC,
       emiContract: "0xYourBscTestEmiContractAddress",
     },
     mainnet: {
       name: "bscMainnet",
-      rpc: "https://bsc-dataseed.binance.org/",
+      rpc: process.env.BSC_MAINNET_RPC,
       emiContract: "0xYourBscMainEmiContractAddress",
     },
     tokens: {
@@ -62,12 +61,12 @@ const CHAINS = {
     chainId: 137,
     testnet: {
       name: "mumbai",
-      rpc: "https://rpc-mumbai.maticvigil.com/",
+      rpc: process.env.MUMBAI_RPC,
       emiContract: "0xYourMumbaiEmiContractAddress",
     },
     mainnet: {
       name: "polygonMainnet",
-      rpc: "https://polygon-rpc.com/",
+      rpc: process.env.POLYGON_MAINNET_RPC,
       emiContract: "0xYourPolygonMainEmiContractAddress",
     },
     tokens: {
@@ -83,7 +82,7 @@ const CHAINS = {
   },
 };
 
-// Get tokens for the current ENV
+// Helper functions
 function getTokens(chainKey) {
   const chain = CHAINS[chainKey];
   if (!chain) return {};
@@ -94,21 +93,40 @@ function getTokens(chainKey) {
   return tokens;
 }
 
-// Get RPC URL for a chain
 function getRpc(chainKey) {
   const chain = CHAINS[chainKey];
   if (!chain) return null;
   return chain[ENV].rpc;
 }
 
-// Get EMI contract address for a chain
 function getEmiContract(chainKey) {
   const chain = CHAINS[chainKey];
   if (!chain) return null;
   return chain[ENV].emiContract;
 }
 
-// Add this to your AppConfig export in config.js
+// New: Generate link for sender
+function generateEmiLink({
+  blockchain,
+  token,
+  receiver,
+  emiAmount,
+  totalAmount,
+  interval,
+}) {
+  const baseUrl = "https://yourapp.com/pay";
+  const params = new URLSearchParams({
+    chain: blockchain,
+    token,
+    receiver,
+    emiAmount: emiAmount.toString(),
+    totalAmount: totalAmount.toString(),
+    interval: interval.toString(),
+  });
+  return `${baseUrl}?${params.toString()}`;
+}
+
+// Token decimals
 const TOKEN_DECIMALS = {
   USDT: 6,
   DAI: 18,
@@ -116,7 +134,7 @@ const TOKEN_DECIMALS = {
   BUSD: 18,
 };
 
-// Export configuration for frontend
+// Export
 export const AppConfig = {
   ENV,
   CHAINS,
@@ -124,4 +142,5 @@ export const AppConfig = {
   getRpc,
   getEmiContract,
   TOKEN_DECIMALS,
+  generateEmiLink,
 };
