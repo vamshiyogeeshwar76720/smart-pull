@@ -45,6 +45,8 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
         require(receiver != address(0), "Invalid receiver");
         require(token != address(0), "Invalid token");
         require(interval >= 60, "Min 1 min");
+        require(emiAmount > 0, "Invalid EMI amount");
+        require(totalAmount >= emiAmount, "Total < EMI");
 
         planCounter++;
 
@@ -79,6 +81,8 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
 
         require(!plan.isActive, "Plan already active");
         require(amount >= plan.emiAmount, "Amount < EMI");
+        require(amount <= plan.totalAmount, "Amount exceeds total");
+
         require(plan.receiver != address(0), "Plan does not exist");
 
         IERC20 token = IERC20(plan.token);
@@ -132,11 +136,19 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
         EmiPlan storage p = plans[planId];
 
         require(p.isActive, "Plan not active");
-
+        require(p.amountPaid < p.totalAmount, "Plan already completed");
         IERC20(p.token).transferFrom(p.sender, p.receiver, p.emiAmount);
 
-        p.amountPaid += p.emiAmount;
+        IERC20 token = IERC20(p.token);
 
+        require(
+            token.allowance(p.sender, address(this)) >= p.emiAmount,
+            "Insufficient allowance for EMI"
+        );
+
+        bool success = token.transferFrom(p.sender, p.receiver, p.emiAmount);
+        require(success, "EMI transfer failed");
+        p.amountPaid += p.emiAmount;
         if (p.amountPaid >= p.totalAmount) {
             p.isActive = false;
             emit EmiCompleted(planId);

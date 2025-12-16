@@ -4,47 +4,9 @@ export const contractABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-      {
-        indexed: false,
         internalType: "uint256",
-        name: "amount",
+        name: "planId",
         type: "uint256",
-      },
-    ],
-    name: "DepositMade",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "EmergencyWithdraw",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "receiver",
-        type: "address",
       },
     ],
     name: "EmiCompleted",
@@ -55,6 +17,12 @@ export const contractABI = [
     inputs: [
       {
         indexed: true,
+        internalType: "uint256",
+        name: "planId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
         internalType: "address",
         name: "receiver",
         type: "address",
@@ -63,12 +31,6 @@ export const contractABI = [
         indexed: false,
         internalType: "uint256",
         name: "amount",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "nextPaymentTime",
         type: "uint256",
       },
     ],
@@ -90,12 +52,6 @@ export const contractABI = [
         name: "receiver",
         type: "address",
       },
-      // {
-      //   indexed: false,
-      //   internalType: "string",
-      //   name: "receiverNetwork",
-      //   type: "string",
-      // },
       {
         indexed: false,
         internalType: "address",
@@ -125,16 +81,6 @@ export const contractABI = [
     type: "event",
   },
   {
-    inputs: [{ internalType: "bytes", name: "", type: "bytes" }],
-    name: "checkUpkeep",
-    outputs: [
-      { internalType: "bool", name: "upkeepNeeded", type: "bool" },
-      { internalType: "bytes", name: "", type: "bytes" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -153,15 +99,57 @@ export const contractABI = [
     name: "PlanActivated",
     type: "event",
   },
-
   {
     inputs: [
-      { internalType: "address", name: "receiver", type: "address" },
-      // { internalType: "string", name: "receiverNetwork", type: "string" },
-      { internalType: "address", name: "token", type: "address" },
-      { internalType: "uint256", name: "emiAmount", type: "uint256" },
-      { internalType: "uint256", name: "interval", type: "uint256" },
-      { internalType: "uint256", name: "totalAmount", type: "uint256" },
+      {
+        internalType: "bytes",
+        name: "",
+        type: "bytes",
+      },
+    ],
+    name: "checkUpkeep",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "upkeepNeeded",
+        type: "bool",
+      },
+      {
+        internalType: "bytes",
+        name: "performData",
+        type: "bytes",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "receiver",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "emiAmount",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "interval",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "totalAmount",
+        type: "uint256",
+      },
     ],
     name: "createEmiPlan",
     outputs: [],
@@ -169,41 +157,106 @@ export const contractABI = [
     type: "function",
   },
   {
-    inputs: [],
-    name: "depositFunds",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "amount", type: "uint256" }],
-    name: "emergencyWithdraw",
+    inputs: [
+      {
+        internalType: "bytes",
+        name: "performData",
+        type: "bytes",
+      },
+    ],
+    name: "performUpkeep",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
     inputs: [],
-    name: "getContractBalance",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "planCounter",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [],
-    name: "plan",
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "plans",
     outputs: [
-      { internalType: "address", name: "sender", type: "address" },
-      { internalType: "address", name: "receiver", type: "address" },
-      { internalType: "uint256", name: "emiAmount", type: "uint256" },
-      { internalType: "uint256", name: "interval", type: "uint256" },
-      { internalType: "uint256", name: "totalAmount", type: "uint256" },
-      { internalType: "uint256", name: "amountPaid", type: "uint256" },
-      { internalType: "uint256", name: "nextPaymentTime", type: "uint256" },
-      { internalType: "bool", name: "isActive", type: "bool" },
-      { internalType: "string", name: "senderNetwork", type: "string" },
+      {
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "receiver",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "emiAmount",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "interval",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "totalAmount",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "amountPaid",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "nextPaymentTime",
+        type: "uint256",
+      },
+      {
+        internalType: "bool",
+        name: "isActive",
+        type: "bool",
+      },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "planId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "receivePayment",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
 ];
