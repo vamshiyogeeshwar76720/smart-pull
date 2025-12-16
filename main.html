@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="style.css">
 
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> -->
 
     <!-- <script src="./abi.js"></script> -->
 
@@ -52,8 +52,8 @@
         <input id="receiverAddress" placeholder="Receiver Address (0x...)" type="text">
 
         <!-- Receiver Network Auto-Filled -->
-        <label>Receiver Network:</label>
-        <input id="receiverNetworkInput" placeholder="Connect wallet to auto-fill" type="text" disabled>
+        <!-- <label>Receiver Network:</label>
+        <input id="receiverNetworkInput" placeholder="Connect wallet to auto-fill" type="text" disabled> -->
 
         <input id="emiAmount" placeholder="EMI Amount" type="number">
 
@@ -73,15 +73,28 @@
 
         <input id="totalAmount" placeholder="Total Amount" type="number">
 
-        <button id="createPlanBtn">Generate QR</button>
+        <button id="createPlanBtn">Create EMI Plan</button>
 
-        <h3>Share this QR to Sender</h3>
-        <div id="qrCode"></div>
+        <h3>Share this address to Sender</h3>
+
     </div>
 
     <hr>
 
     <button onclick="window.location.href='wallets.html'">Connected Wallets</button>
+
+    <h2>Connected Receivers</h2>
+    <table id="receiverTable" border="1">
+        <thead>
+            <tr>
+                <th>Receiver Address</th>
+                <th>Connected At</th>
+                <th>Auto Debit Started</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
 
     <script>
         function goBack() {
@@ -89,7 +102,7 @@
         }
     </script>
 
-    <script>
+    <!-- <script>
         // Keep receiverNetworkInput updated
         const netInput = document.getElementById("receiverNetworkInput");
         const observer = new MutationObserver(() => {
@@ -99,7 +112,7 @@
             }
         });
         observer.observe(document.getElementById("network"), { childList: true });
-    </script>
+    </script> -->
 </body>
 
 </html>

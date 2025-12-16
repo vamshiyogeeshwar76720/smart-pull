@@ -80,14 +80,26 @@ export const contractABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "address",
-        name: "sender",
-        type: "address",
+        internalType: "uint256",
+        name: "planId",
+        type: "uint256",
       },
       {
         indexed: true,
         internalType: "address",
         name: "receiver",
+        type: "address",
+      },
+      // {
+      //   indexed: false,
+      //   internalType: "string",
+      //   name: "receiverNetwork",
+      //   type: "string",
+      // },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
         type: "address",
       },
       {
@@ -108,12 +120,6 @@ export const contractABI = [
         name: "totalAmount",
         type: "uint256",
       },
-      {
-        indexed: false,
-        internalType: "string",
-        name: "senderNetwork",
-        type: "string",
-      },
     ],
     name: "EmiPlanCreated",
     type: "event",
@@ -129,10 +135,30 @@ export const contractABI = [
     type: "function",
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "planId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+    ],
+    name: "PlanActivated",
+    type: "event",
+  },
+
+  {
     inputs: [
       { internalType: "address", name: "receiver", type: "address" },
-      { internalType: "string", name: "receiverNetwork", type: "string" },
-      { internalType: "address", name: "tokenAddress", type: "address" },
+      // { internalType: "string", name: "receiverNetwork", type: "string" },
+      { internalType: "address", name: "token", type: "address" },
       { internalType: "uint256", name: "emiAmount", type: "uint256" },
       { internalType: "uint256", name: "interval", type: "uint256" },
       { internalType: "uint256", name: "totalAmount", type: "uint256" },
