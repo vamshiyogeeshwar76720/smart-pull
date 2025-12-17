@@ -3,20 +3,7 @@ export const contractABI = [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
-        internalType: "uint256",
-        name: "planId",
-        type: "uint256",
-      },
-    ],
-    name: "EmiCompleted",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
+        indexed: false,
         internalType: "uint256",
         name: "planId",
         type: "uint256",
@@ -24,7 +11,7 @@ export const contractABI = [
       {
         indexed: false,
         internalType: "address",
-        name: "receiver",
+        name: "sender",
         type: "address",
       },
       {
@@ -34,47 +21,23 @@ export const contractABI = [
         type: "uint256",
       },
     ],
-    name: "EmiPaid",
+    name: "Deposited",
     type: "event",
   },
   {
     anonymous: false,
     inputs: [
       {
-        indexed: true,
+        indexed: false,
         internalType: "uint256",
         name: "planId",
         type: "uint256",
       },
       {
-        indexed: true,
+        indexed: false,
         internalType: "address",
         name: "receiver",
         type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "emiAmount",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "interval",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "totalAmount",
-        type: "uint256",
       },
     ],
     name: "EmiPlanCreated",
@@ -84,19 +47,32 @@ export const contractABI = [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
+        indexed: false,
         internalType: "uint256",
         name: "planId",
         type: "uint256",
       },
       {
-        indexed: true,
-        internalType: "address",
-        name: "sender",
-        type: "address",
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
       },
     ],
-    name: "PlanActivated",
+    name: "EmiReleased",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "planId",
+        type: "uint256",
+      },
+    ],
+    name: "PlanCompleted",
     type: "event",
   },
   {
@@ -111,12 +87,12 @@ export const contractABI = [
     outputs: [
       {
         internalType: "bool",
-        name: "upkeepNeeded",
+        name: "",
         type: "bool",
       },
       {
         internalType: "bytes",
-        name: "performData",
+        name: "",
         type: "bytes",
       },
     ],
@@ -125,11 +101,6 @@ export const contractABI = [
   },
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "receiver",
-        type: "address",
-      },
       {
         internalType: "address",
         name: "token",
@@ -159,8 +130,26 @@ export const contractABI = [
   {
     inputs: [
       {
+        internalType: "uint256",
+        name: "planId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "deposit",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "bytes",
-        name: "performData",
+        name: "data",
         type: "bytes",
       },
     ],
@@ -224,7 +213,7 @@ export const contractABI = [
       },
       {
         internalType: "uint256",
-        name: "amountPaid",
+        name: "amountReleased",
         type: "uint256",
       },
       {
@@ -234,29 +223,11 @@ export const contractABI = [
       },
       {
         internalType: "bool",
-        name: "isActive",
+        name: "active",
         type: "bool",
       },
     ],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "planId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "receivePayment",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
 ];

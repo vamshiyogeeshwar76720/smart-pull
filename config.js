@@ -10,7 +10,7 @@ const CHAINS = {
     testnet: {
       name: "sepolia",
       rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-      emiContract: "0xc359E332334d6dFB5d85369b83084a8660104288", // update after deployment
+      emiContract: "0x65c80BbF6136c26E01B1417D2B5556cc10477ac0", // update after deployment
     },
     mainnet: {
       name: "mainnet",
@@ -19,15 +19,15 @@ const CHAINS = {
     },
     tokens: {
       USDT: {
-        testnet: "0x69E01A51CaD15aA6388f390fBCB0CB435A7665e7",
+        testnet: "0xE32a01c5cc91e0373fd1d5B410e9cEC79A687C04",
         mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       },
       DAI: {
-        testnet: "0x25B34C8dc6BE1f232fd090CC8ad13D6f525E7a7D",
+        testnet: "0xac4EE627fCa9d3A3938089D4D7cA0E4850397cA8",
         mainnet: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
       },
       WETH: {
-        testnet: "0x4549487C298D8069F901C6A53F7DEf5AC940c709",
+        testnet: "0xbc9934E06215844F77e566D3934063d2EAa883c4",
         mainnet: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       },
     },

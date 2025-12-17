@@ -1,44 +1,111 @@
-import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js";
+import { AppConfig } from "./config.js";
+import { contractABI } from "./abi.js";
 
-const connectBtn = document.getElementById("connectBtn");
+let provider, signer;
 
-connectBtn.onclick = async () => {
+// ---------------- DOM ELEMENTS ----------------
+const connectBtn = document.getElementById("connectWalletBtn");
+const disconnectBtn = document.getElementById("disconnectWalletBtn");
+const accountDisplay = document.getElementById("account");
+const networkDisplay = document.getElementById("network");
+
+const blockchainSelect = document.getElementById("blockchainSelect");
+const planIdInput = document.getElementById("planId");
+const tokenAddressInput = document.getElementById("tokenAddress");
+const amountInput = document.getElementById("amount");
+
+const activateBtn = document.getElementById("activatePlanBtn");
+
+// ---------------- WALLET CONNECTION ----------------
+async function connectWallet() {
+  if (!window.ethereum) return alert("Install MetaMask");
+
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+
+  const address = await signer.getAddress();
+  const network = await provider.getNetwork();
+
+  accountDisplay.innerText = `Wallet: ${address}`;
+  networkDisplay.innerText = `Network: ${network.name}`;
+
+  connectBtn.style.display = "none";
+  disconnectBtn.style.display = "inline-block";
+}
+
+async function disconnectWallet() {
+  signer = null;
+  provider = null;
+  accountDisplay.innerText = "";
+  networkDisplay.innerText = "";
+  connectBtn.style.display = "inline-block";
+  disconnectBtn.style.display = "none";
+}
+
+connectBtn.onclick = connectWallet;
+disconnectBtn.onclick = disconnectWallet;
+
+// ---------------- ACTIVATE EMI PLAN ----------------
+activateBtn.onclick = async () => {
+  if (!signer) return alert("Connect wallet first");
+
   try {
-    if (!window.ethereum) {
-      alert("Install MetaMask or another Ethereum wallet.");
-      return;
-    }
+    const planId = planIdInput.value.trim();
+    const tokenAddress = tokenAddressInput.value.trim();
+    const amountInputVal = amountInput.value.trim();
+    const blockchain = blockchainSelect.value;
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    const signer = await provider.getSigner();
-    const address = await signer.getAddress();
+    if (!planId || isNaN(planId)) return alert("Invalid plan ID");
+    if (!ethers.utils.isAddress(tokenAddress))
+      return alert("Invalid token address");
+    if (!amountInputVal || isNaN(amountInputVal))
+      return alert("Invalid amount");
 
-    alert("Wallet connected: " + address);
+    const decimals = await getTokenDecimals(tokenAddress);
+    const amount = ethers.utils.parseUnits(amountInputVal, decimals);
 
-    // Now you can call your backend to fetch EMI details using planId
-    const urlParams = new URLSearchParams(window.location.search);
-    const planId = urlParams.get("planId");
-    if (!planId) return alert("No planId found in QR link.");
+    const contractAddress = AppConfig.getEmiContract(blockchain);
 
-    // Example: call backend API to get EMI transaction info
-    const res = await fetch(
-      `https://yourdomain.com/api/getPlan?planId=${planId}`
-    );
-    const planData = await res.json();
-
-    // Send transaction using signer
-    const contract = new ethers.Contract(
-      planData.contractAddress,
-      planData.abi,
+    const token = new ethers.Contract(
+      tokenAddress,
+      [
+        "function approve(address,uint256) external returns (bool)",
+        "function allowance(address,address) external view returns (uint256)",
+      ],
       signer
     );
 
-    const tx = await contract.activatePlan(planId, { gasLimit: 200000 });
+    const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+    // ---------------- APPROVE ----------------
+    const allowance = await token.allowance(
+      await signer.getAddress(),
+      contractAddress
+    );
+
+    if (allowance.lt(amount)) {
+      const approveTx = await token.approve(contractAddress, amount);
+      await approveTx.wait();
+    }
+
+    // ---------------- ACTIVATE PLAN ----------------
+    const tx = await contract.receivePayment(planId, amount);
     await tx.wait();
-    alert("EMI payment activated successfully!");
+
+    alert("✅ EMI plan activated successfully.\nAuto-pay has started.");
   } catch (err) {
     console.error(err);
-    alert("Error connecting wallet or activating plan: " + err.message);
+    alert(err?.reason || err?.message || "Activation failed");
   }
 };
+
+// ---------------- HELPERS ----------------
+async function getTokenDecimals(tokenAddress) {
+  const erc20 = new ethers.Contract(
+    tokenAddress,
+    ["function decimals() view returns (uint8)"],
+    provider
+  );
+  return await erc20.decimals();
+}
