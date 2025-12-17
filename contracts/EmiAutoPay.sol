@@ -137,8 +137,8 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
 
         require(p.isActive, "Plan not active");
         require(p.amountPaid < p.totalAmount, "Plan already completed");
-        IERC20(p.token).transferFrom(p.sender, p.receiver, p.emiAmount);
-
+        // IERC20(p.token).transferFrom(p.sender, p.receiver, p.emiAmount);
+        require(block.timestamp >= p.nextPaymentTime, "Too early");
         IERC20 token = IERC20(p.token);
 
         require(
@@ -151,6 +151,7 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
         p.amountPaid += p.emiAmount;
         if (p.amountPaid >= p.totalAmount) {
             p.isActive = false;
+            emit EmiPaid(planId, p.receiver, p.emiAmount);
             emit EmiCompleted(planId);
         } else {
             p.nextPaymentTime = block.timestamp + p.interval;
