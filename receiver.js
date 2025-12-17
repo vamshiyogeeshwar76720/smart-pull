@@ -108,7 +108,9 @@ document.getElementById("createPlanBtn").onclick = async () => {
   try {
     const receiverAddress = await signer.getAddress();
     const emiAmountInput = document.getElementById("emiAmount").value.trim();
-    const totalAmountInput = document.getElementById("totalAmount").value.trim();
+    const totalAmountInput = document
+      .getElementById("totalAmount")
+      .value.trim();
     const blockchain = blockchainSelect.value;
     const tokenAddress = tokenSelect.value;
     const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
@@ -137,7 +139,7 @@ document.getElementById("createPlanBtn").onclick = async () => {
     const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
     const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);
 
-    const contractAddress = AppConfig.getEmiContract(blockchain);
+    let contractAddress = AppConfig.getEmiContract(blockchain);
     const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
     // Create EMI Plan - receiver creates it for themselves
@@ -187,8 +189,13 @@ Status: Waiting for sender activation...
     alert(planDetails);
 
     // Listen for PlanActivated event
-    setupPlanEventListeners(contract, planId, contractAddress, tokenSymbol, decimals);
-
+    setupPlanEventListeners(
+      contract,
+      planId,
+      contractAddress,
+      tokenSymbol,
+      decimals
+    );
   } catch (err) {
     console.error("Error creating EMI plan:", err);
     const msg =
@@ -198,38 +205,44 @@ Status: Waiting for sender activation...
 };
 
 // --- SETUP EVENT LISTENERS FOR PLAN ---
-function setupPlanEventListeners(contract, planId, contractAddress, tokenSymbol, decimals) {
+function setupPlanEventListeners(
+  contract,
+  planId,
+  contractAddress,
+  tokenSymbol,
+  decimals
+) {
   console.log(`Setting up listeners for Plan ID: ${planId.toString()}`);
 
   // Listen for PlanActivated event
-  contract.on("PlanActivated", (pid, sender) => {
-    if (pid.eq(planId)) {
-      console.log(`Plan ${pid.toString()} activated by ${sender}`);
+  contract.on("PlanActivated", (planId, sender) => {
+    if (planId.eq(planId)) {
+      console.log(`Plan ${planId.toString()} activated by ${sender}`);
       alert(
-        `✅ Plan Activated!\n\nPlan ID: ${pid.toString()}\nSender: ${sender}\n\nAuto-debit has started. Payments will be made automatically at the scheduled intervals.`
+        `✅ Plan Activated!\n\nPlan ID: ${planId.toString()}\nSender: ${sender}\n\nAuto-debit has started. Payments will be made automatically at the scheduled intervals.`
       );
     }
   });
 
   // Listen for EmiPaid event
-  contract.on("EmiPaid", (pid, receiver, amount) => {
+  contract.on("EmiPaid", (planId, receiver, amount) => {
     if (pid.eq(planId)) {
       const formattedAmount = ethers.utils.formatUnits(amount, decimals);
       console.log(
-        `EMI Payment received for Plan ${pid.toString()}: ${formattedAmount} ${tokenSymbol}`
+        `EMI Payment received for Plan ${planId.toString()}: ${formattedAmount} ${tokenSymbol}`
       );
       alert(
-        `💰 EMI Payment Received!\n\nPlan ID: ${pid.toString()}\nAmount: ${formattedAmount} ${tokenSymbol}\nReceiver: ${receiver}`
+        `💰 EMI Payment Received!\n\nPlan ID: ${planId.toString()}\nAmount: ${formattedAmount} ${tokenSymbol}\nReceiver: ${receiver}`
       );
     }
   });
 
   // Listen for EmiCompleted event
-  contract.on("EmiCompleted", (pid) => {
-    if (pid.eq(planId)) {
-      console.log(`Plan ${pid.toString()} completed!`);
+  contract.on("EmiCompleted", (planId) => {
+    if (planId.eq(planId)) {
+      console.log(`Plan ${planId.toString()} completed!`);
       alert(
-        `🎉 EMI Plan Completed!\n\nPlan ID: ${pid.toString()}\n\nAll payments have been received. The plan is now inactive.`
+        `🎉 EMI Plan Completed!\n\nPlan ID: ${planId.toString()}\n\nAll payments have been received. The plan is now inactive.`
       );
     }
   });
@@ -244,7 +257,11 @@ async function checkPlanStatus(planId) {
   try {
     const blockchain = blockchainSelect.value;
     const contractAddress = AppConfig.getEmiContract(blockchain);
-    const contract = new ethers.Contract(contractAddress, contractABI, provider);
+    const contract = new ethers.Contract(
+      contractAddress,
+      contractABI,
+      provider
+    );
 
     const plan = await contract.plans(planId);
 
@@ -257,7 +274,9 @@ EMI Amount: ${plan.emiAmount.toString()}
 Total Amount: ${plan.totalAmount.toString()}
 Amount Paid: ${plan.amountPaid.toString()}
 Interval: ${plan.interval.toString()} seconds
-Next Payment: ${new Date(plan.nextPaymentTime.toNumber() * 1000).toLocaleString()}
+Next Payment: ${new Date(
+      plan.nextPaymentTime.toNumber() * 1000
+    ).toLocaleString()}
 Active: ${plan.isActive ? "Yes" : "No"}
     `.trim();
 
@@ -270,28 +289,6 @@ Active: ${plan.isActive ? "Yes" : "No"}
 
 // Make checkPlanStatus available globally for debugging/testing
 window.checkPlanStatus = checkPlanStatus;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //code that payments will be done but the auto pay is not caing
 // import { AppConfig } from "./config.js";
