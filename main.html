@@ -81,6 +81,23 @@
 
     <hr>
 
+    <hr>
+
+    <div id="modifyReceiverSection">
+        <h2>Modify Receiver Address (Active EMI Only)</h2>
+
+        <input id="modifyPlanId" placeholder="Plan ID" type="number">
+        <input id="newReceiverAddress" placeholder="New Receiver Address (0x...)" type="text">
+
+        <button id="modifyReceiverBtn">Update Receiver</button>
+
+        <p style="color: red; font-size: 12px;">
+            ⚠ Only current receiver can modify.<br>
+            ⚠ Affects future EMI payments only.
+        </p>
+    </div>
+
+
     <button onclick="window.location.href='wallets.html'">Connected Wallets</button>
 
     <h2>Connected Receivers</h2>
