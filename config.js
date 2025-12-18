@@ -10,7 +10,7 @@ const ENV = "testnet"; // "testnet" | "mainnet"
 const CHAINS = {
   // -------------------- EVM CHAINS --------------------
   ethereum: {
-    type: "EVM",
+    type: "evm",
     name: "Ethereum",
     chainId: 1,
 
@@ -18,7 +18,7 @@ const CHAINS = {
       name: "Sepolia",
       chainId: 11155111,
       rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-      emiContract: "0x2Aaa8786213Ac2bf1deE497C9cE205EF9495f662",
+      emiContract: "0xC276133aa10a2e0d74CfBCadF845B6a7C3609446",
     },
 
     mainnet: {
@@ -33,7 +33,7 @@ const CHAINS = {
         decimals: 6,
         permit: false,
         addresses: {
-          testnet: "0x3828C9210DE708cf6980bd8fa0238816936F60bE",
+          testnet: "0xa943D7986BE6c1E67A2e0B6b28bF151A64c1916A",
           mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         },
       },
@@ -41,7 +41,7 @@ const CHAINS = {
         decimals: 18,
         permit: true,
         addresses: {
-          testnet: "0xd146e20c8AB87d7E4525a25aEaeF80f8d36AE82d",
+          testnet: "0x420bD646eDD415EC6F942E48D3c8A68AF0DFF713",
           mainnet: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
         },
       },
@@ -57,7 +57,7 @@ const CHAINS = {
   },
 
   bsc: {
-    type: "EVM",
+    type: "evm",
     name: "Binance Smart Chain",
     chainId: 56,
 
@@ -96,7 +96,7 @@ const CHAINS = {
   },
 
   polygon: {
-    type: "EVM",
+    type: "evm",
     name: "Polygon",
     chainId: 137,
 
@@ -136,7 +136,7 @@ const CHAINS = {
 
   // -------------------- TRON --------------------
   tron: {
-    type: "TRON",
+    type: "tron",
     name: "TRON",
     network: "mainnet",
     explorer: "https://tronscan.org",
@@ -166,12 +166,14 @@ function getChain(chainKey) {
 }
 
 function isEvmChain(chainKey) {
-  return CHAINS[chainKey]?.type === "EVM";
+  return CHAINS[chainKey]?.type === "evm";
 }
 
 function getRpc(chainKey) {
   const chain = CHAINS[chainKey];
-  if (!chain || chain.type !== "EVM") return null;
+  if (!chain) return null;
+
+  if (chain.type === "tron") return chain.rpc;
   return chain[ENV].rpc;
 }
 
@@ -179,7 +181,7 @@ function getEmiContract(chainKey) {
   const chain = CHAINS[chainKey];
   if (!chain) return null;
 
-  if (chain.type === "TRON") return chain.emiContract;
+  if (chain.type === "tron") return chain.emiContract;
   return chain[ENV].emiContract;
 }
 
@@ -189,17 +191,9 @@ function getTokens(chainKey) {
 
   const tokens = {};
 
-  if (chain.type === "TRON") {
-    for (const [symbol, t] of Object.entries(chain.tokens)) {
-      tokens[symbol] = t.address;
-    }
-    return tokens;
-  }
-
   for (const [symbol, t] of Object.entries(chain.tokens)) {
-    tokens[symbol] = t.addresses[ENV];
+    tokens[symbol] = chain.type === "tron" ? t.address : t.addresses[ENV];
   }
-
   return tokens;
 }
 
@@ -213,10 +207,6 @@ const TOKEN_DECIMALS = {
 function getTokenMeta(chainKey, symbol) {
   const chain = CHAINS[chainKey];
   if (!chain) return null;
-
-  if (chain.type === "TRON") {
-    return chain.tokens[symbol] || null;
-  }
 
   return chain.tokens[symbol] || null;
 }

@@ -330,26 +330,30 @@ const customIntervalInput = document.getElementById("customInterval");
    WALLET CONNECTION (RECEIVER)
 ========================================================= */
 async function connectWallet() {
-  if (!window.ethereum) {
-    alert("MetaMask not detected");
-    return;
+  const blockchain = blockchainSelect.value;
+
+  if (AppConfig.CHAINS[blockchain].type === "evm") {
+    if (!window.ethereum) return alert("MetaMask required");
+
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    receiverAddress = await signer.getAddress();
+
+    const network = await provider.getNetwork();
+    accountDisplay.innerText = `Wallet: ${receiverAddress}`;
+    networkDisplay.innerText = `Network: ${network.name}`;
+  } else if (AppConfig.CHAINS[blockchain].type === "tron") {
+    if (!window.tronWeb || !window.tronWeb.ready)
+      return alert("TronLink required");
+
+    receiverAddress = tronWeb.defaultAddress.base58;
+    accountDisplay.innerText = `Wallet: ${receiverAddress}`;
+    networkDisplay.innerText = `Network: TRON`;
   }
-
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-
-  signer = provider.getSigner();
-  receiverAddress = await signer.getAddress();
-
-  const network = await provider.getNetwork();
-
-  accountDisplay.innerText = `Wallet: ${receiverAddress}`;
-  networkDisplay.innerText = `Network: ${network.name} (${network.chainId})`;
 
   connectBtn.style.display = "none";
   disconnectBtn.style.display = "inline-block";
-
-  sessionStorage.setItem("receiverAddress", receiverAddress);
 }
 
 function disconnectWallet() {
@@ -414,86 +418,73 @@ intervalSelect.addEventListener("change", () => {
 /* =========================================================
    CREATE EMI PLAN (RECEIVER FLOW)
 ========================================================= */
+
 document.getElementById("createPlanBtn").onclick = async () => {
-  if (!signer) return alert("Connect receiver wallet first");
-
   const blockchain = blockchainSelect.value;
+  const chainType = AppConfig.CHAINS[blockchain].type;
 
-  if (blockchain === "tron") {
-    alert("TRON EMI creation uses TronLink. This panel is EVM only.");
-    return;
-  }
+  const tokenAddress = tokenSelect.value;
+  const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex]?.text;
 
-  try {
-    const tokenAddress = tokenSelect.value;
-    const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex]?.text;
+  const emiInput = document.getElementById("emiAmount").value;
+  const totalInput = document.getElementById("totalAmount").value;
 
-    if (!ethers.utils.isAddress(tokenAddress))
-      return alert("Invalid token address");
+  if (!emiInput || !totalInput) return alert("EMI & Total amount required");
 
-    const emiInput = document.getElementById("emiAmount").value;
-    const totalInput = document.getElementById("totalAmount").value;
+  const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
+  if (!tokenMeta) return alert("Token metadata missing");
 
-    if (!emiInput || !totalInput) return alert("EMI & Total amount required");
+  const decimals = tokenMeta.decimals;
 
-    const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
-    if (!tokenMeta) return alert("Token metadata missing");
+  let intervalSeconds =
+    intervalSelect.value === "custom"
+      ? Number(customIntervalInput.value) * 60
+      : Number(intervalSelect.value);
 
-    const decimals = tokenMeta.decimals;
+  if (intervalSeconds < 60) return alert("Min 60s");
 
-    const emiAmount = ethers.utils.parseUnits(emiInput, decimals);
-    const totalAmount = ethers.utils.parseUnits(totalInput, decimals);
+  /* =======================
+        EVM FLOW
+  ======================= */
+  if (chainType === "evm") {
+    if (!signer) return alert("Connect MetaMask");
 
-    let intervalSeconds =
-      intervalSelect.value === "custom"
-        ? Number(customIntervalInput.value) * 60
-        : Number(intervalSelect.value);
+    const emi = ethers.utils.parseUnits(emiInput, decimals);
+    const total = ethers.utils.parseUnits(totalInput, decimals);
 
-    if (!intervalSeconds || intervalSeconds < 60)
-      return alert("Interval must be ≥ 60 seconds");
-
-    const contractAddress = AppConfig.getEmiContract(blockchain);
-    const contract = new ethers.Contract(contractAddress, contractABI, signer);
+    const contract = new ethers.Contract(
+      AppConfig.getEmiContract(blockchain),
+      contractABI,
+      signer
+    );
 
     const tx = await contract.createPlan(
-      receiverAddress,
       tokenAddress,
-      emiAmount,
+      emi,
       intervalSeconds,
-      totalAmount
+      total
     );
 
-    alert("Transaction sent. Waiting for confirmation...");
-    const receipt = await tx.wait();
+    await tx.wait();
+    alert("✅ EVM EMI Plan Created");
+  }
 
-    const event = receipt.events?.find((e) => e.event === "PlanCreated");
-    if (!event) throw new Error("EmiPlanCreated event not found");
+  /* =======================
+        TRON FLOW
+  ======================= */
+  if (chainType === "tron") {
+    if (!window.tronWeb || !tronWeb.ready) return alert("Connect TronLink");
 
-    const planId = event.args.planId.toString();
+    const emi = tronWeb.toSun(emiInput);
+    const total = tronWeb.toSun(totalInput);
 
-    alert(
-      `
-✅ EMI PLAN CREATED
+    const contract = await tronWeb
+      .contract()
+      .at(AppConfig.getEmiContract(blockchain));
 
-Plan ID: ${planId}
-Receiver: ${receiverAddress}
-Token: ${tokenSymbol}
-EMI Amount: ${emiInput}
-Total Amount: ${totalInput}
-Interval: ${intervalSeconds / 60} minutes
+    await contract.createPlan(tokenAddress, emi, intervalSeconds, total).send();
 
-NEXT:
-• Share Plan ID with sender
-• Sender signs Permit / Permit2
-• Sender activates plan
-• Auto-pay starts
-    `.trim()
-    );
-
-    setupEventListeners(contract, planId, tokenSymbol, decimals);
-  } catch (err) {
-    console.error(err);
-    alert(err.reason || err.message || "Plan creation failed");
+    alert("✅ TRON EMI Plan Created");
   }
 };
 
@@ -506,7 +497,7 @@ function setupEventListeners(contract, planId, symbol, decimals) {
     alert(`✅ EMI ACTIVATED\nSender: ${sender}`);
   });
 
-  contract.on("EmiPaid", (pid,  amount) => {
+  contract.on("EmiPaid", (pid, amount) => {
     if (pid.toString() !== planId) return;
     alert(
       `💰 EMI RECEIVED\n${ethers.utils.formatUnits(amount, decimals)} ${symbol}`
