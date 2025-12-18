@@ -2,62 +2,65 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMI AutoPay - Receiver Panel</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EMI AutoPay – Receiver Panel</title>
 
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Ethers (EVM only – receiver side) -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> -->
 
-    <!-- <script src="./abi.js"></script> -->
-
+    <!-- Receiver Logic -->
     <script type="module" src="./receiver.js" defer></script>
 </head>
 
 <body>
 
-    <button class="home-btn back-btn" onclick="goBack()">Back</button>
-    <h1>Receiver – Create EMI Plan</h1>
+    <!-- ================= HEADER ================= -->
+    <header class="header">
+        <button class="back-btn" onclick="goBack()">← Back</button>
+        <h1>Receiver Dashboard</h1>
+        <p class="subtitle">Create & manage EMI auto-payment plans</p>
+    </header>
 
-    <div id="wallet">
+    <!-- ================= WALLET ================= -->
+    <section id="walletSection" class="card">
+        <h2>Receiver Wallet</h2>
+
         <button id="connectWalletBtn">Connect Wallet</button>
-        <!-- Add this button below Connect Wallet -->
-        <button id="disconnectWalletBtn" style="display:none;">Disconnect Wallet</button>
+        <button id="disconnectWalletBtn" style="display:none;">Disconnect</button>
 
+        <p id="account" class="muted"></p>
+        <p id="network" class="muted"></p>
 
+        <p class="info">
+            🔐 Only the receiver connects here.<br />
+            👤 Sender never connects to this application.
+        </p>
+    </section>
 
-        <p id="account"></p>
-        <p id="network"></p>
-    </div>
+    <!-- ================= CREATE EMI ================= -->
+    <section id="createPlan" class="card">
+        <h2>Create EMI Plan</h2>
 
-    <hr>
-
-    <div id="createPlan">
-        <h2>Enter EMI Details</h2>
-
-        <!-- Blockchain Dropdown -->
-        <label for="blockchainSelect">Select Blockchain:</label>
+        <!-- Blockchain -->
+        <label>Blockchain</label>
         <select id="blockchainSelect"></select>
 
-        <!-- Token Dropdown -->
-        <label for="tokenSelect">Select Token:</label>
+        <!-- Token -->
+        <label>Token</label>
         <select id="tokenSelect"></select>
 
-        <!-- Auto-populated Token Address -->
-        <label for="tokenAddressDisplay">Token Address:</label>
-        <input id="tokenAddressDisplay" type="text" disabled placeholder="Token address auto-filled">
+        <label>Token Address</label>
+        <input id="tokenAddressDisplay" type="text" disabled />
 
+        <!-- EMI -->
+        <label>EMI Amount</label>
+        <input id="emiAmount" type="number" placeholder="e.g. 100" />
 
-        <!-- <input id="receiverAddress" placeholder="Receiver Address (0x...)" type="text"> -->
-
-        <!-- Receiver Network Auto-Filled -->
-        <!-- <label>Receiver Network:</label>
-        <input id="receiverNetworkInput" placeholder="Connect wallet to auto-fill" type="text" disabled> -->
-
-        <input id="emiAmount" placeholder="EMI Amount" type="number">
-
-        <label>Payment Interval:</label>
+        <!-- Interval -->
+        <label>Payment Interval</label>
         <select id="intervalSelect">
             <option value="3600">1 Hour</option>
             <option value="10800">3 Hours</option>
@@ -69,67 +72,69 @@
             <option value="custom">Custom (minutes)</option>
         </select>
 
-        <input id="customInterval" placeholder="Custom minutes" style="display:none">
+        <input id="customInterval" type="number" placeholder="Minutes" style="display:none;" />
 
-        <input id="totalAmount" placeholder="Total Amount" type="number">
+        <!-- Total -->
+        <label>Total Amount</label>
+        <input id="totalAmount" type="number" placeholder="e.g. 1200" />
 
-        <button id="createPlanBtn">Create EMI Plan</button>
+        <button id="createPlanBtn" class="primary-btn">
+            Create EMI Plan
+        </button>
 
-        <h3>Share this address to Sender</h3>
+        <div class="info-box">
+            <h4>What happens next?</h4>
+            <ol>
+                <li>Share the <b>Plan ID</b> with sender</li>
+                <li>Sender optionally sends down-payment</li>
+                <li>Sender approves & activates EMI (one time)</li>
+                <li>Auto-payments start</li>
+            </ol>
+        </div>
+    </section>
 
-    </div>
+    <!-- ================= MODIFY RECEIVER ================= -->
+    <section id="modifyReceiverSection" class="card warning">
+        <h2>Modify Receiver Address</h2>
 
-    <hr>
+        <input id="modifyPlanId" type="number" placeholder="Plan ID" />
 
-    <hr>
+        <input id="newReceiverAddress" type="text" placeholder="New Receiver Address (0x...)" />
 
-    <div id="modifyReceiverSection">
-        <h2>Modify Receiver Address (Active EMI Only)</h2>
+        <button id="modifyReceiverBtn" class="secondary-btn">
+            Update Receiver
+        </button>
 
-        <input id="modifyPlanId" placeholder="Plan ID" type="number">
-        <input id="newReceiverAddress" placeholder="New Receiver Address (0x...)" type="text">
-
-        <button id="modifyReceiverBtn">Update Receiver</button>
-
-        <p style="color: red; font-size: 12px;">
-            ⚠ Only current receiver can modify.<br>
-            ⚠ Affects future EMI payments only.
+        <p class="warning-text">
+            ⚠ Only current receiver can modify<br />
+            ⚠ Applies only to future EMI payments
         </p>
-    </div>
+    </section>
 
+    <!-- ================= STATUS ================= -->
+    <section class="card">
+        <h2>Plan Monitoring</h2>
+        <p class="muted">
+            EMI status updates (activation, payments, completion) will
+            appear automatically while this page is open.
+        </p>
+    </section>
 
-    <button onclick="window.location.href='wallets.html'">Connected Wallets</button>
+    <!-- ================= FOOTER ================= -->
+    <footer class="footer">
+        <p>
+            🧾 EMI is pull-based & secure.<br />
+            🔒 No funds are held by this app.
+        </p>
+    </footer>
 
-    <h2>Connected Receivers</h2>
-    <table id="receiverTable" border="1">
-        <thead>
-            <tr>
-                <th>Receiver Address</th>
-                <th>Connected At</th>
-                <th>Auto Debit Started</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-
+    <!-- ================= SCRIPTS ================= -->
     <script>
         function goBack() {
             window.location.href = "./home.html";
         }
     </script>
 
-    <!-- <script>
-        // Keep receiverNetworkInput updated
-        const netInput = document.getElementById("receiverNetworkInput");
-        const observer = new MutationObserver(() => {
-            const walletNet = document.getElementById("network").innerText;
-            if (walletNet.includes("Network:")) {
-                netInput.value = walletNet.replace("Network: ", "").split(" ")[0];
-            }
-        });
-        observer.observe(document.getElementById("network"), { childList: true });
-    </script> -->
 </body>
 
 </html>

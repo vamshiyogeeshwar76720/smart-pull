@@ -1,11 +1,11 @@
 // old code pull based - sender to receiver (receive payment not fucntioning . to work this seperate page fo teh sender is needeed)
 
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
     event EmiPlanCreated(
@@ -93,6 +93,37 @@ contract EmiAutoPay is AutomationCompatibleInterface, ReentrancyGuard {
             interval,
             totalAmount
         );
+    }
+
+    function activatePlanWithPermit(
+        uint256 planId,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        EmiPlan storage plan = plans[planId];
+
+        require(!plan.isActive, "Already active");
+        require(plan.receiver != address(0), "Plan not found");
+
+        // 1️⃣ Permit approval
+        IERC20Permit(plan.token).permit(
+            msg.sender,
+            address(this),
+            plan.emiAmount,
+            deadline,
+            v,
+            r,
+            s
+        );
+
+        // 2️⃣ Activate
+        plan.sender = msg.sender;
+        plan.isActive = true;
+        plan.nextPaymentTime = block.timestamp + plan.interval;
+
+        emit PlanActivated(planId, msg.sender);
     }
 
     // ---------------- SENDER ACTIVATES EMI ----------------
