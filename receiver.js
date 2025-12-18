@@ -440,8 +440,10 @@ document.getElementById("createPlanBtn").onclick = async () => {
     if (!emiAmountInput || !totalAmountInput)
       return alert("Amount fields required");
 
-    const decimals = AppConfig.TOKEN_DECIMALS[tokenSymbol];
-    if (decimals === undefined) return alert("Token decimals not configured");
+    const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
+    if (!tokenMeta) return alert("Token metadata not configured");
+
+    const decimals = tokenMeta.decimals;
 
     const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
     const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);

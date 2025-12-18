@@ -203,6 +203,13 @@ function getTokens(chainKey) {
   return tokens;
 }
 
+const TOKEN_DECIMALS = {
+  USDT: 6,
+  DAI: 18,
+  WETH: 18,
+  BUSD: 18,
+};
+
 function getTokenMeta(chainKey, symbol) {
   const chain = CHAINS[chainKey];
   if (!chain) return null;
@@ -235,7 +242,7 @@ function generateEmiLink({ chain, planId, token, receiver }) {
 export const AppConfig = {
   ENV,
   CHAINS,
-
+  TOKEN_DECIMALS,
   // helpers
   getChain,
   isEvmChain,
