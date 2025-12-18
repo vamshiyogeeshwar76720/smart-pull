@@ -18,7 +18,7 @@ const CHAINS = {
       name: "Sepolia",
       chainId: 11155111,
       rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-      emiContract: "0x4E07Cfce3480810CE0D6a45dbc7ccf99eC9559e2",
+      emiContract: "0x2Aaa8786213Ac2bf1deE497C9cE205EF9495f662",
     },
 
     mainnet: {
@@ -33,7 +33,7 @@ const CHAINS = {
         decimals: 6,
         permit: false,
         addresses: {
-          testnet: "0x9F1def26961A3aa4fe2863ea6154a73e6cAADbFA",
+          testnet: "0x3828C9210DE708cf6980bd8fa0238816936F60bE",
           mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         },
       },
@@ -41,7 +41,7 @@ const CHAINS = {
         decimals: 18,
         permit: true,
         addresses: {
-          testnet: "0xfF90d4Ae810D55D3cBE5eE40Fd9045BBdCe73E06",
+          testnet: "0xd146e20c8AB87d7E4525a25aEaeF80f8d36AE82d",
           mainnet: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
         },
       },

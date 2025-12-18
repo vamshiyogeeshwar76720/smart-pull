@@ -5,7 +5,7 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with account:", deployer.address);
 
-  const Emi = await ethers.getContractFactory("EmiAutoPay");
+  const Emi = await ethers.getContractFactory("EmiAutoPayEVM");
   const emi = await Emi.deploy();
   await emi.deployed();
 

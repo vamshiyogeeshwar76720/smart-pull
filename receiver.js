@@ -299,19 +299,17 @@
 //     alert("Error: " + (err?.message || "Unknown error"));
 //   }
 // }
-
 // // Make checkPlanStatus available globally for debugging/testing
 // window.checkPlanStatus = checkPlanStatus;
-// receiver.js --permit based ERC20 AND TRC20
 import { AppConfig } from "./config.js";
 import { contractABI } from "./abi.js";
 
 /* =========================================================
    GLOBAL STATE
 ========================================================= */
-let provider = null;
-let signer = null;
-let receiverAddress = null;
+let provider;
+let signer;
+let receiverAddress;
 
 /* =========================================================
    UI ELEMENTS
@@ -329,7 +327,7 @@ const intervalSelect = document.getElementById("intervalSelect");
 const customIntervalInput = document.getElementById("customInterval");
 
 /* =========================================================
-   WALLET (RECEIVER ONLY)
+   WALLET CONNECTION (RECEIVER)
 ========================================================= */
 async function connectWallet() {
   if (!window.ethereum) {
@@ -372,12 +370,12 @@ connectBtn.onclick = connectWallet;
 disconnectBtn.onclick = disconnectWallet;
 
 /* =========================================================
-   DROPDOWNS (CHAIN + TOKEN)
+   CHAIN & TOKEN DROPDOWNS
 ========================================================= */
-Object.keys(AppConfig.CHAINS).forEach((chainKey) => {
+Object.entries(AppConfig.CHAINS).forEach(([key, cfg]) => {
   const opt = document.createElement("option");
-  opt.value = chainKey;
-  opt.text = AppConfig.CHAINS[chainKey].name;
+  opt.value = key;
+  opt.textContent = cfg.name;
   blockchainSelect.appendChild(opt);
 });
 
@@ -386,10 +384,12 @@ function populateTokens() {
   tokenAddressDisplay.value = "";
 
   const tokens = AppConfig.getTokens(blockchainSelect.value);
+  if (!tokens) return;
+
   Object.entries(tokens).forEach(([symbol, address]) => {
     const opt = document.createElement("option");
     opt.value = address;
-    opt.text = symbol;
+    opt.textContent = symbol;
     tokenSelect.appendChild(opt);
   });
 
@@ -412,54 +412,50 @@ intervalSelect.addEventListener("change", () => {
 });
 
 /* =========================================================
-   CREATE EMI PLAN (RECEIVER)
+   CREATE EMI PLAN (RECEIVER FLOW)
 ========================================================= */
 document.getElementById("createPlanBtn").onclick = async () => {
   if (!signer) return alert("Connect receiver wallet first");
 
   const blockchain = blockchainSelect.value;
 
-  /* ---------- TRON BLOCK ---------- */
   if (blockchain === "tron") {
-    alert(
-      "TRON EMI plans require a separate TronLink-based flow.\nThis panel supports EVM only."
-    );
+    alert("TRON EMI creation uses TronLink. This panel is EVM only.");
     return;
   }
 
   try {
     const tokenAddress = tokenSelect.value;
-    const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
-
-    const emiAmountInput = document.getElementById("emiAmount").value;
-    const totalAmountInput = document.getElementById("totalAmount").value;
+    const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex]?.text;
 
     if (!ethers.utils.isAddress(tokenAddress))
       return alert("Invalid token address");
 
-    if (!emiAmountInput || !totalAmountInput)
-      return alert("Amount fields required");
+    const emiInput = document.getElementById("emiAmount").value;
+    const totalInput = document.getElementById("totalAmount").value;
+
+    if (!emiInput || !totalInput) return alert("EMI & Total amount required");
 
     const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
-    if (!tokenMeta) return alert("Token metadata not configured");
+    if (!tokenMeta) return alert("Token metadata missing");
 
     const decimals = tokenMeta.decimals;
 
-    const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
-    const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);
+    const emiAmount = ethers.utils.parseUnits(emiInput, decimals);
+    const totalAmount = ethers.utils.parseUnits(totalInput, decimals);
 
     let intervalSeconds =
       intervalSelect.value === "custom"
         ? Number(customIntervalInput.value) * 60
         : Number(intervalSelect.value);
 
-    if (intervalSeconds < 60)
-      return alert("Interval must be at least 60 seconds");
+    if (!intervalSeconds || intervalSeconds < 60)
+      return alert("Interval must be ≥ 60 seconds");
 
     const contractAddress = AppConfig.getEmiContract(blockchain);
     const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-    const tx = await contract.createEmiPlan(
+    const tx = await contract.createPlan(
       receiverAddress,
       tokenAddress,
       emiAmount,
@@ -470,12 +466,10 @@ document.getElementById("createPlanBtn").onclick = async () => {
     alert("Transaction sent. Waiting for confirmation...");
     const receipt = await tx.wait();
 
-    const createdEvent = receipt.events.find(
-      (e) => e.event === "EmiPlanCreated"
-    );
-    if (!createdEvent) throw new Error("Plan creation event missing");
+    const event = receipt.events?.find((e) => e.event === "PlanCreated");
+    if (!event) throw new Error("EmiPlanCreated event not found");
 
-    const planId = createdEvent.args.planId.toString();
+    const planId = event.args.planId.toString();
 
     alert(
       `
@@ -484,37 +478,35 @@ document.getElementById("createPlanBtn").onclick = async () => {
 Plan ID: ${planId}
 Receiver: ${receiverAddress}
 Token: ${tokenSymbol}
-EMI Amount: ${emiAmountInput}
-Total Amount: ${totalAmountInput}
+EMI Amount: ${emiInput}
+Total Amount: ${totalInput}
 Interval: ${intervalSeconds / 60} minutes
 
-NEXT STEPS:
+NEXT:
 • Share Plan ID with sender
-• Sender approves contract once
-• Sender activates EMI
+• Sender signs Permit / Permit2
+• Sender activates plan
 • Auto-pay starts
-
-⚠ Sender never connects here
-      `.trim()
+    `.trim()
     );
 
     setupEventListeners(contract, planId, tokenSymbol, decimals);
   } catch (err) {
     console.error(err);
-    alert(err?.reason || err?.message || "Failed to create EMI plan");
+    alert(err.reason || err.message || "Plan creation failed");
   }
 };
 
 /* =========================================================
-   EVENT MONITORING
+   EVENT LISTENERS
 ========================================================= */
 function setupEventListeners(contract, planId, symbol, decimals) {
   contract.on("PlanActivated", (pid, sender) => {
     if (pid.toString() !== planId) return;
-    alert(`✅ EMI Activated by Sender:\n${sender}`);
+    alert(`✅ EMI ACTIVATED\nSender: ${sender}`);
   });
 
-  contract.on("EmiPaid", (pid, receiver, amount) => {
+  contract.on("EmiPaid", (pid,  amount) => {
     if (pid.toString() !== planId) return;
     alert(
       `💰 EMI RECEIVED\n${ethers.utils.formatUnits(amount, decimals)} ${symbol}`
@@ -523,15 +515,15 @@ function setupEventListeners(contract, planId, symbol, decimals) {
 
   contract.on("EmiCompleted", (pid) => {
     if (pid.toString() !== planId) return;
-    alert("🎉 EMI PLAN COMPLETED");
+    alert("🎉 EMI COMPLETED");
   });
 
   contract.on("ReceiverModified", (pid, oldR, newR) => {
     if (pid.toString() !== planId) return;
-    alert(`🔁 Receiver Updated\n\nOld: ${oldR}\nNew: ${newR}`);
+    alert(`🔁 Receiver Changed\n${oldR} → ${newR}`);
   });
 
-  console.log("📡 EMI event listeners active");
+  console.log("📡 EMI listeners attached");
 }
 
 /* =========================================================
@@ -547,34 +539,302 @@ document.getElementById("modifyReceiverBtn").onclick = async () => {
       .value.trim();
 
     if (!planId || isNaN(planId)) return alert("Invalid Plan ID");
-    if (!ethers.utils.isAddress(newReceiver))
-      return alert("Invalid receiver address");
+    if (!ethers.utils.isAddress(newReceiver)) return alert("Invalid address");
 
     const blockchain = blockchainSelect.value;
-    if (blockchain === "tron")
-      return alert("Receiver modification for TRON handled separately");
+    if (blockchain === "tron") return alert("TRON handled separately");
 
-    const contractAddress = AppConfig.getEmiContract(blockchain);
-    const contract = new ethers.Contract(contractAddress, contractABI, signer);
+    const contract = new ethers.Contract(
+      AppConfig.getEmiContract(blockchain),
+      contractABI,
+      signer
+    );
 
     const tx = await contract.modifyReceiver(planId, newReceiver);
     await tx.wait();
 
-    alert(
-      `
-✅ RECEIVER UPDATED
-
-Plan ID: ${planId}
-New Receiver: ${newReceiver}
-
-All future EMI payments will go to the new address.
-      `.trim()
-    );
+    alert(`✅ Receiver updated to ${newReceiver}`);
   } catch (err) {
     console.error(err);
-    alert(err?.reason || err?.message || "Receiver update failed");
+    alert(err.reason || err.message || "Receiver update failed");
   }
 };
+
+// receiver.js --permit based ERC20(USDT,DAI,USDC)
+
+// receiver.js --permit based ERC20 AND TRC20
+// import { AppConfig } from "./config.js";
+// import { contractABI } from "./abi.js";
+
+// /* =========================================================
+//    GLOBAL STATE
+// ========================================================= */
+// let provider = null;
+// let signer = null;
+// let receiverAddress = null;
+
+// /* =========================================================
+//    UI ELEMENTS
+// ========================================================= */
+// const connectBtn = document.getElementById("connectWalletBtn");
+// const disconnectBtn = document.getElementById("disconnectWalletBtn");
+// const accountDisplay = document.getElementById("account");
+// const networkDisplay = document.getElementById("network");
+
+// const blockchainSelect = document.getElementById("blockchainSelect");
+// const tokenSelect = document.getElementById("tokenSelect");
+// const tokenAddressDisplay = document.getElementById("tokenAddressDisplay");
+
+// const intervalSelect = document.getElementById("intervalSelect");
+// const customIntervalInput = document.getElementById("customInterval");
+
+// /* =========================================================
+//    WALLET (RECEIVER ONLY)
+// ========================================================= */
+// async function connectWallet() {
+//   if (!window.ethereum) {
+//     alert("MetaMask not detected");
+//     return;
+//   }
+
+//   provider = new ethers.providers.Web3Provider(window.ethereum);
+//   await provider.send("eth_requestAccounts", []);
+
+//   signer = provider.getSigner();
+//   receiverAddress = await signer.getAddress();
+
+//   const network = await provider.getNetwork();
+
+//   accountDisplay.innerText = `Wallet: ${receiverAddress}`;
+//   networkDisplay.innerText = `Network: ${network.name} (${network.chainId})`;
+
+//   connectBtn.style.display = "none";
+//   disconnectBtn.style.display = "inline-block";
+
+//   sessionStorage.setItem("receiverAddress", receiverAddress);
+// }
+
+// function disconnectWallet() {
+//   provider = null;
+//   signer = null;
+//   receiverAddress = null;
+
+//   accountDisplay.innerText = "";
+//   networkDisplay.innerText = "";
+
+//   connectBtn.style.display = "inline-block";
+//   disconnectBtn.style.display = "none";
+
+//   sessionStorage.clear();
+// }
+
+// connectBtn.onclick = connectWallet;
+// disconnectBtn.onclick = disconnectWallet;
+
+// /* =========================================================
+//    DROPDOWNS (CHAIN + TOKEN)
+// ========================================================= */
+// Object.keys(AppConfig.CHAINS).forEach((chainKey) => {
+//   const opt = document.createElement("option");
+//   opt.value = chainKey;
+//   opt.text = AppConfig.CHAINS[chainKey].name;
+//   blockchainSelect.appendChild(opt);
+// });
+
+// function populateTokens() {
+//   tokenSelect.innerHTML = "";
+//   tokenAddressDisplay.value = "";
+
+//   const tokens = AppConfig.getTokens(blockchainSelect.value);
+//   Object.entries(tokens).forEach(([symbol, address]) => {
+//     const opt = document.createElement("option");
+//     opt.value = address;
+//     opt.text = symbol;
+//     tokenSelect.appendChild(opt);
+//   });
+
+//   tokenAddressDisplay.value = tokenSelect.value || "";
+// }
+
+// blockchainSelect.addEventListener("change", populateTokens);
+// tokenSelect.addEventListener("change", () => {
+//   tokenAddressDisplay.value = tokenSelect.value || "";
+// });
+
+// populateTokens();
+
+// /* =========================================================
+//    INTERVAL HANDLING
+// ========================================================= */
+// intervalSelect.addEventListener("change", () => {
+//   customIntervalInput.style.display =
+//     intervalSelect.value === "custom" ? "block" : "none";
+// });
+
+// /* =========================================================
+//    CREATE EMI PLAN (RECEIVER)
+// ========================================================= */
+// document.getElementById("createPlanBtn").onclick = async () => {
+//   if (!signer) return alert("Connect receiver wallet first");
+
+//   const blockchain = blockchainSelect.value;
+
+//   /* ---------- TRON BLOCK ---------- */
+//   if (blockchain === "tron") {
+//     alert(
+//       "TRON EMI plans require a separate TronLink-based flow.\nThis panel supports EVM only."
+//     );
+//     return;
+//   }
+
+//   try {
+//     const tokenAddress = tokenSelect.value;
+//     const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
+
+//     const emiAmountInput = document.getElementById("emiAmount").value;
+//     const totalAmountInput = document.getElementById("totalAmount").value;
+
+//     if (!ethers.utils.isAddress(tokenAddress))
+//       return alert("Invalid token address");
+
+//     if (!emiAmountInput || !totalAmountInput)
+//       return alert("Amount fields required");
+
+//     const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
+//     if (!tokenMeta) return alert("Token metadata not configured");
+
+//     const decimals = tokenMeta.decimals;
+
+//     const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
+//     const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);
+
+//     let intervalSeconds =
+//       intervalSelect.value === "custom"
+//         ? Number(customIntervalInput.value) * 60
+//         : Number(intervalSelect.value);
+
+//     if (intervalSeconds < 60)
+//       return alert("Interval must be at least 60 seconds");
+
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     const tx = await contract.createEmiPlan(
+//       receiverAddress,
+//       tokenAddress,
+//       emiAmount,
+//       intervalSeconds,
+//       totalAmount
+//     );
+
+//     alert("Transaction sent. Waiting for confirmation...");
+//     const receipt = await tx.wait();
+
+//     const createdEvent = receipt.events.find(
+//       (e) => e.event === "EmiPlanCreated"
+//     );
+//     if (!createdEvent) throw new Error("Plan creation event missing");
+
+//     const planId = createdEvent.args.planId.toString();
+
+//     alert(
+//       `
+// ✅ EMI PLAN CREATED
+
+// Plan ID: ${planId}
+// Receiver: ${receiverAddress}
+// Token: ${tokenSymbol}
+// EMI Amount: ${emiAmountInput}
+// Total Amount: ${totalAmountInput}
+// Interval: ${intervalSeconds / 60} minutes
+
+// NEXT STEPS:
+// • Share Plan ID with sender
+// • Sender approves contract once
+// • Sender activates EMI
+// • Auto-pay starts
+
+// ⚠ Sender never connects here
+//       `.trim()
+//     );
+
+//     setupEventListeners(contract, planId, tokenSymbol, decimals);
+//   } catch (err) {
+//     console.error(err);
+//     alert(err?.reason || err?.message || "Failed to create EMI plan");
+//   }
+// };
+
+// /* =========================================================
+//    EVENT MONITORING
+// ========================================================= */
+// function setupEventListeners(contract, planId, symbol, decimals) {
+//   contract.on("PlanActivated", (pid, sender) => {
+//     if (pid.toString() !== planId) return;
+//     alert(`✅ EMI Activated by Sender:\n${sender}`);
+//   });
+
+//   contract.on("EmiPaid", (pid, receiver, amount) => {
+//     if (pid.toString() !== planId) return;
+//     alert(
+//       `💰 EMI RECEIVED\n${ethers.utils.formatUnits(amount, decimals)} ${symbol}`
+//     );
+//   });
+
+//   contract.on("EmiCompleted", (pid) => {
+//     if (pid.toString() !== planId) return;
+//     alert("🎉 EMI PLAN COMPLETED");
+//   });
+
+//   contract.on("ReceiverModified", (pid, oldR, newR) => {
+//     if (pid.toString() !== planId) return;
+//     alert(`🔁 Receiver Updated\n\nOld: ${oldR}\nNew: ${newR}`);
+//   });
+
+//   console.log("📡 EMI event listeners active");
+// }
+
+// /* =========================================================
+//    MODIFY RECEIVER
+// ========================================================= */
+// document.getElementById("modifyReceiverBtn").onclick = async () => {
+//   if (!signer) return alert("Connect wallet first");
+
+//   try {
+//     const planId = document.getElementById("modifyPlanId").value.trim();
+//     const newReceiver = document
+//       .getElementById("newReceiverAddress")
+//       .value.trim();
+
+//     if (!planId || isNaN(planId)) return alert("Invalid Plan ID");
+//     if (!ethers.utils.isAddress(newReceiver))
+//       return alert("Invalid receiver address");
+
+//     const blockchain = blockchainSelect.value;
+//     if (blockchain === "tron")
+//       return alert("Receiver modification for TRON handled separately");
+
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     const tx = await contract.modifyReceiver(planId, newReceiver);
+//     await tx.wait();
+
+//     alert(
+//       `
+// ✅ RECEIVER UPDATED
+
+// Plan ID: ${planId}
+// New Receiver: ${newReceiver}
+
+// All future EMI payments will go to the new address.
+//       `.trim()
+//     );
+//   } catch (err) {
+//     console.error(err);
+//     alert(err?.reason || err?.message || "Receiver update failed");
+//   }
+// };
 
 // Listen for ReceiverModified event
 // contract.on("ReceiverModified", (pid, oldR, newR) => {
