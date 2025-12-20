@@ -2,13 +2,12 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /*//////////////////////////////////////////////////////////////
                             PERMIT2
-    //////////////////////////////////////////////////////////////*/
+//////////////////////////////////////////////////////////////*/
 
 interface IPermit2 {
     function permit(
@@ -39,18 +38,19 @@ struct PermitDetails {
 }
 
 contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
-    // Ethereum Permit2 (Uniswap)
     address public constant PERMIT2 =
         0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
-    /*//////////////////////////////////////////////////////////////
-                                STRUCT
-    //////////////////////////////////////////////////////////////*/
+    address public immutable USDT;
+
+    constructor(address _usdt) {
+        require(_usdt != address(0), "Invalid USDT");
+        USDT = _usdt;
+    }
 
     struct Plan {
         address sender;
         address receiver;
-        address token;
         uint256 emi;
         uint256 interval;
         uint256 total;
@@ -62,12 +62,8 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     uint256 public planCount;
     mapping(uint256 => Plan) public plans;
 
-    /*//////////////////////////////////////////////////////////////
-                                EVENTS
-    //////////////////////////////////////////////////////////////*/
-
     event PlanCreated(uint256 indexed planId);
-    event PlanActivated(uint256 indexed planId, address indexed sender);
+    event PlanActivated(uint256 indexed planId, address sender);
     event EmiPaid(uint256 indexed planId, uint256 amount);
     event EmiCompleted(uint256 indexed planId);
 
@@ -75,15 +71,9 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
                         RECEIVER CREATES PLAN
     //////////////////////////////////////////////////////////////*/
 
-    function createPlan(
-        address token,
-        uint256 emi,
-        uint256 interval,
-        uint256 total
-    ) external {
-        require(token != address(0), "Invalid token");
+    function createPlan(uint256 emi, uint256 interval, uint256 total) external {
         require(emi > 0, "Invalid EMI");
-        require(interval >= 60, "Min interval 60s");
+        require(interval >= 60, "Min 60s");
         require(total >= emi, "Total < EMI");
 
         planCount++;
@@ -91,7 +81,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         plans[planCount] = Plan({
             sender: address(0),
             receiver: msg.sender,
-            token: token,
             emi: emi,
             interval: interval,
             total: total,
@@ -104,72 +93,51 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-                ACTIVATE PLAN (EIP-2612 → DAI / USDC)
+        SENDER ACTIVATES + DOWNPAYMENT + PERMIT2 (ONE TX)
     //////////////////////////////////////////////////////////////*/
 
-    function activatePlanWithPermit(
+    function activatePlanWithPermit2AndPay(
         uint256 planId,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
-        Plan storage p = plans[planId];
-        require(!p.active, "Already active");
-
-        IERC20Permit(p.token).permit(
-            msg.sender,
-            address(this),
-            p.emi,
-            deadline,
-            v,
-            r,
-            s
-        );
-
-        _activate(planId, msg.sender);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                ACTIVATE PLAN (PERMIT2 → USDT)
-    //////////////////////////////////////////////////////////////*/
-
-    function activatePlanWithPermit2(
-        uint256 planId,
+        uint160 activationAmount,
         PermitSingle calldata permit,
         bytes calldata signature
-    ) external {
+    ) external nonReentrant {
         Plan storage p = plans[planId];
+        require(p.receiver != address(0), "Invalid plan");
         require(!p.active, "Already active");
+        // require(downPayment >= p.emi, "Down < EMI");
+
+        // 🔒 ADD THIS
+        require(permit.details.amount >= p.total, "Permit amount < total EMI");
+
+        require(permit.details.token == USDT, "USDT only");
+        require(permit.spender == address(this), "Bad spender");
+
+        // Register sender
+        p.sender = msg.sender;
+
+        // Permit2 for future EMIs
 
         IPermit2(PERMIT2).permit(msg.sender, permit, signature);
 
-        _activate(planId, msg.sender);
-    }
+        if (activationAmount > 0) {
+            IPermit2(PERMIT2).transferFrom(
+                msg.sender,
+                p.receiver,
+                activationAmount,
+                USDT
+            );
+            emit EmiPaid(planId, activationAmount);
+        }
 
-    /*//////////////////////////////////////////////////////////////
-                ACTIVATE PLAN (NORMAL APPROVE)
-    //////////////////////////////////////////////////////////////*/
-
-    function activatePlan(uint256 planId) external {
-        Plan storage p = plans[planId];
-        require(!p.active, "Already active");
-
-        require(
-            IERC20(p.token).allowance(msg.sender, address(this)) >= p.emi,
-            "Insufficient allowance"
-        );
-
-        _activate(planId, msg.sender);
-    }
-
-    function _activate(uint256 planId, address sender) internal {
-        Plan storage p = plans[planId];
-        p.sender = sender;
         p.active = true;
+        // p.startTime = block.timestamp;
         p.nextPay = block.timestamp + p.interval;
 
-        emit PlanActivated(planId, sender);
+        emit PlanActivated(planId, msg.sender);
+        //      if (activationAmount > 0) {
+        //     emit EmiPaid(planId, activationAmount); // optional event
+        // }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -196,32 +164,18 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     function performUpkeep(bytes calldata data) external override nonReentrant {
         uint256 planId = abi.decode(data, (uint256));
         Plan storage p = plans[planId];
-
         require(p.active, "Inactive");
-        require(block.timestamp >= p.nextPay, "Too early");
-
-        // 1️⃣ Try normal ERC20 transferFrom
-        bool success = IERC20(p.token).transferFrom(
+        IPermit2(PERMIT2).transferFrom(
             p.sender,
             p.receiver,
-            p.emi
+            uint160(p.emi),
+            USDT
         );
-
-        // 2️⃣ Fallback to Permit2 (USDT path)
-        if (!success) {
-            IPermit2(PERMIT2).transferFrom(
-                p.sender,
-                p.receiver,
-                uint160(p.emi),
-                p.token
-            );
-        }
 
         p.paid += p.emi;
 
         if (p.paid >= p.total) {
             p.active = false;
-            emit EmiPaid(planId, p.emi);
             emit EmiCompleted(planId);
         } else {
             p.nextPay = block.timestamp + p.interval;

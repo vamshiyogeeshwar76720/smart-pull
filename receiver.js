@@ -304,12 +304,15 @@
 import { AppConfig } from "./config.js";
 import { contractABI } from "./abi.js";
 
+import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm";
+
 /* =========================================================
    GLOBAL STATE
 ========================================================= */
 let provider;
 let signer;
 let receiverAddress;
+let currentChainId;
 
 /* =========================================================
    UI ELEMENTS
@@ -327,30 +330,64 @@ const intervalSelect = document.getElementById("intervalSelect");
 const customIntervalInput = document.getElementById("customInterval");
 
 /* =========================================================
-   WALLET CONNECTION (RECEIVER)
+   NETWORK HELPERS
+========================================================= */
+function getNetworkLabel(chainId) {
+  if (chainId === 1) return "Ethereum Mainnet";
+  if (chainId === 11155111) return "Sepolia Testnet";
+  return `Unknown (${chainId})`;
+}
+
+function getBlockchainKeyByChainId(chainId) {
+  return Object.keys(AppConfig.CHAINS).find(
+    (key) => AppConfig.CHAINS[key][AppConfig.ENV].chainId === chainId
+  );
+}
+
+/* =========================================================
+   SYNC NETWORK (SOURCE OF TRUTH)
+========================================================= */
+async function syncNetwork() {
+  const chainIdHex = await window.ethereum.request({
+    method: "eth_chainId",
+  });
+
+  currentChainId = Number(chainIdHex);
+  networkDisplay.innerText = `Network: ${getNetworkLabel(currentChainId)}`;
+
+  const chainKey = getBlockchainKeyByChainId(currentChainId);
+
+  if (!chainKey) {
+    alert("Unsupported network. Please switch wallet network.");
+    return;
+  }
+
+  blockchainSelect.value = chainKey;
+  populateTokens();
+
+  console.log("✅ Connected chain:", currentChainId, chainKey);
+}
+
+/* =========================================================
+   WALLET CONNECTION
 ========================================================= */
 async function connectWallet() {
-  const blockchain = blockchainSelect.value;
-
-  if (AppConfig.CHAINS[blockchain].type === "evm") {
-    if (!window.ethereum) return alert("MetaMask required");
-
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    receiverAddress = await signer.getAddress();
-
-    const network = await provider.getNetwork();
-    accountDisplay.innerText = `Wallet: ${receiverAddress}`;
-    networkDisplay.innerText = `Network: ${network.name}`;
-  } else if (AppConfig.CHAINS[blockchain].type === "tron") {
-    if (!window.tronWeb || !window.tronWeb.ready)
-      return alert("TronLink required");
-
-    receiverAddress = tronWeb.defaultAddress.base58;
-    accountDisplay.innerText = `Wallet: ${receiverAddress}`;
-    networkDisplay.innerText = `Network: TRON`;
+  if (!window.ethereum) {
+    alert("MetaMask required");
+    return;
   }
+
+  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+  await provider.send("eth_requestAccounts", []);
+
+  signer = provider.getSigner();
+  receiverAddress = await signer.getAddress();
+
+  accountDisplay.innerText = `Wallet: ${receiverAddress}`;
+
+  // Important for Netlify cold load
+  await new Promise((res) => setTimeout(res, 200));
+  await syncNetwork();
 
   connectBtn.style.display = "none";
   disconnectBtn.style.display = "inline-block";
@@ -366,8 +403,6 @@ function disconnectWallet() {
 
   connectBtn.style.display = "inline-block";
   disconnectBtn.style.display = "none";
-
-  sessionStorage.clear();
 }
 
 connectBtn.onclick = connectWallet;
@@ -405,8 +440,6 @@ tokenSelect.addEventListener("change", () => {
   tokenAddressDisplay.value = tokenSelect.value || "";
 });
 
-populateTokens();
-
 /* =========================================================
    INTERVAL HANDLING
 ========================================================= */
@@ -416,140 +449,98 @@ intervalSelect.addEventListener("change", () => {
 });
 
 /* =========================================================
-   CREATE EMI PLAN (RECEIVER FLOW)
+   CREATE EMI PLAN
 ========================================================= */
-
 document.getElementById("createPlanBtn").onclick = async () => {
-  const blockchain = blockchainSelect.value;
-  const chainType = AppConfig.CHAINS[blockchain].type;
+  if (!signer) return alert("Connect MetaMask");
 
-  const tokenAddress = tokenSelect.value;
+  const blockchain = blockchainSelect.value;
   const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex]?.text;
 
   const emiInput = document.getElementById("emiAmount").value;
   const totalInput = document.getElementById("totalAmount").value;
 
-  if (!emiInput || !totalInput) return alert("EMI & Total amount required");
+  if (!emiInput || !totalInput) {
+    return alert("EMI & Total required");
+  }
 
   const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
   if (!tokenMeta) return alert("Token metadata missing");
-
-  const decimals = tokenMeta.decimals;
 
   let intervalSeconds =
     intervalSelect.value === "custom"
       ? Number(customIntervalInput.value) * 60
       : Number(intervalSelect.value);
 
-  if (intervalSeconds < 60) return alert("Min 60s");
+  if (intervalSeconds < 60) return alert("Minimum 60 seconds");
 
-  /* =======================
-        EVM FLOW
-  ======================= */
-  if (chainType === "evm") {
-    if (!signer) return alert("Connect MetaMask");
+  const emi = ethers.utils.parseUnits(emiInput, tokenMeta.decimals);
+  const total = ethers.utils.parseUnits(totalInput, tokenMeta.decimals);
 
-    const emi = ethers.utils.parseUnits(emiInput, decimals);
-    const total = ethers.utils.parseUnits(totalInput, decimals);
+  const contract = new ethers.Contract(
+    AppConfig.getEmiContract(blockchain),
+    contractABI,
+    signer
+  );
 
-    const contract = new ethers.Contract(
-      AppConfig.getEmiContract(blockchain),
-      contractABI,
-      signer
+  let planId;
+
+  try {
+    const tx = await contract.createPlan(emi, intervalSeconds, total);
+    const receipt = await tx.wait(1);
+
+    const event = receipt.events?.find(
+      (e) => e.event === "PlanCreated" && e.args?.planId
     );
 
-    const tx = await contract.createPlan(
-      tokenAddress,
-      emi,
-      intervalSeconds,
-      total
-    );
+    if (!event) throw new Error("PlanCreated missing");
 
-    await tx.wait();
-    alert("✅ EVM EMI Plan Created");
+    planId = event.args.planId.toString();
+  } catch (err) {
+    console.error(err);
+    alert(err.reason || err.message || "Create plan failed");
+    return;
   }
 
-  /* =======================
-        TRON FLOW
-  ======================= */
-  if (chainType === "tron") {
-    if (!window.tronWeb || !tronWeb.ready) return alert("Connect TronLink");
+  /* =====================================================
+     DEEPLINK + QR
+  ===================================================== */
+  const host = window.location.origin;
 
-    const emi = tronWeb.toSun(emiInput);
-    const total = tronWeb.toSun(totalInput);
+  const deeplink =
+    `https://metamask.app.link/dapp/${host.replace("https://", "")}` +
+    `/sender.html?planId=${planId}&chainId=${currentChainId}`;
 
-    const contract = await tronWeb
-      .contract()
-      .at(AppConfig.getEmiContract(blockchain));
+  const qrUrl = `${host}/sender.html?planId=${planId}&chainId=${currentChainId}`;
 
-    await contract.createPlan(tokenAddress, emi, intervalSeconds, total).send();
-
-    alert("✅ TRON EMI Plan Created");
-  }
+  document.getElementById("deeplinkOutput").value = deeplink;
+  renderQR(qrUrl);
+  document.getElementById("shareSection").style.display = "block";
 };
 
 /* =========================================================
-   EVENT LISTENERS
+   QR
 ========================================================= */
-function setupEventListeners(contract, planId, symbol, decimals) {
-  contract.on("PlanActivated", (pid, sender) => {
-    if (pid.toString() !== planId) return;
-    alert(`✅ EMI ACTIVATED\nSender: ${sender}`);
+function renderQR(text) {
+  const canvas = document.getElementById("qrCanvas");
+  QRCode.toCanvas(canvas, text, { width: 240 }, (err) => {
+    if (err) console.error(err);
   });
-
-  contract.on("EmiPaid", (pid, amount) => {
-    if (pid.toString() !== planId) return;
-    alert(
-      `💰 EMI RECEIVED\n${ethers.utils.formatUnits(amount, decimals)} ${symbol}`
-    );
-  });
-
-  contract.on("EmiCompleted", (pid) => {
-    if (pid.toString() !== planId) return;
-    alert("🎉 EMI COMPLETED");
-  });
-
-  contract.on("ReceiverModified", (pid, oldR, newR) => {
-    if (pid.toString() !== planId) return;
-    alert(`🔁 Receiver Changed\n${oldR} → ${newR}`);
-  });
-
-  console.log("📡 EMI listeners attached");
 }
 
 /* =========================================================
-   MODIFY RECEIVER
+   METAMASK EVENTS
 ========================================================= */
-document.getElementById("modifyReceiverBtn").onclick = async () => {
-  if (!signer) return alert("Connect wallet first");
+if (window.ethereum) {
+  window.ethereum.on("chainChanged", async () => {
+    await syncNetwork();
+  });
 
-  try {
-    const planId = document.getElementById("modifyPlanId").value.trim();
-    const newReceiver = document
-      .getElementById("newReceiverAddress")
-      .value.trim();
+  window.ethereum.on("accountsChanged", () => {
+    window.location.reload();
+  });
+}
 
-    if (!planId || isNaN(planId)) return alert("Invalid Plan ID");
-    if (!ethers.utils.isAddress(newReceiver)) return alert("Invalid address");
-
-    const blockchain = blockchainSelect.value;
-    if (blockchain === "tron") return alert("TRON handled separately");
-
-    const contract = new ethers.Contract(
-      AppConfig.getEmiContract(blockchain),
-      contractABI,
-      signer
-    );
-
-    const tx = await contract.modifyReceiver(planId, newReceiver);
-    await tx.wait();
-
-    alert(`✅ Receiver updated to ${newReceiver}`);
-  } catch (err) {
-    console.error(err);
-    alert(err.reason || err.message || "Receiver update failed");
-  }
-};
 
 // receiver.js --permit based ERC20(USDT,DAI,USDC)
 

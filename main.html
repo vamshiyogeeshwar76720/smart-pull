@@ -8,9 +8,8 @@
 
     <link rel="stylesheet" href="style.css" />
 
-    <!-- Ethers (EVM only – receiver side) -->
+    <!-- Ethers (EVM only) -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
 
     <!-- Receiver Logic -->
     <script type="module" src="./receiver.js" defer></script>
@@ -22,11 +21,11 @@
     <header class="header">
         <button class="back-btn" onclick="goBack()">← Back</button>
         <h1>Receiver Dashboard</h1>
-        <p class="subtitle">Create & manage EMI auto-payment plans</p>
+        <p class="subtitle">Create EMI auto-payment plans</p>
     </header>
 
     <!-- ================= WALLET ================= -->
-    <section id="walletSection" class="card">
+    <section class="card">
         <h2>Receiver Wallet</h2>
 
         <button id="connectWalletBtn">Connect Wallet</button>
@@ -36,13 +35,13 @@
         <p id="network" class="muted"></p>
 
         <p class="info">
-            🔐 Only the receiver connects here.<br />
-            👤 Sender never connects to this application.
+            🔐 Only the receiver connects here<br />
+            👤 Sender never uses this app
         </p>
     </section>
 
     <!-- ================= CREATE EMI ================= -->
-    <section id="createPlan" class="card">
+    <section class="card">
         <h2>Create EMI Plan</h2>
 
         <!-- Blockchain -->
@@ -82,24 +81,38 @@
         <button id="createPlanBtn" class="primary-btn">
             Create EMI Plan
         </button>
-
-        <div class="info-box">
-            <h4>What happens next?</h4>
-            <ol>
-                <li>Share the <b>Plan ID</b> with sender</li>
-                <li>Sender optionally sends down-payment</li>
-                <li>Sender approves & activates EMI (one time)</li>
-                <li>Auto-payments start</li>
-            </ol>
-        </div>
     </section>
 
+    <!-- ================= SHARE WITH SENDER ================= -->
+    <!-- ================= SHARE WITH SENDER ================= -->
+    <section class="card success" id="shareSection" style="display:none;">
+        <h2>Share With Sender</h2>
+
+        <label>MetaMask Deep Link (Mobile)</label>
+        <div class="row">
+            <input id="deeplinkOutput" type="text" readonly />
+            <button onclick="copyText('deeplinkOutput')">📋 Copy</button>
+        </div>
+
+        <label>Scan QR (Any Wallet)</label>
+        <canvas id="qrCanvas"></canvas>
+
+        <button onclick="downloadQR()">⬇️ Download QR</button>
+
+        <p class="info">
+            📲 Sender scans QR or opens link<br />
+            🦊 Wallet opens automatically<br />
+            🔁 EMI activat
+            `es immediately
+        </p>
+    </section>
+
+
     <!-- ================= MODIFY RECEIVER ================= -->
-    <section id="modifyReceiverSection" class="card warning">
+    <section class="card warning">
         <h2>Modify Receiver Address</h2>
 
         <input id="modifyPlanId" type="number" placeholder="Plan ID" />
-
         <input id="newReceiverAddress" type="text" placeholder="New Receiver Address (0x...)" />
 
         <button id="modifyReceiverBtn" class="secondary-btn">
@@ -108,28 +121,27 @@
 
         <p class="warning-text">
             ⚠ Only current receiver can modify<br />
-            ⚠ Applies only to future EMI payments
+            ⚠ Applies only to future EMIs
         </p>
     </section>
 
     <!-- ================= STATUS ================= -->
     <section class="card">
-        <h2>Plan Monitoring</h2>
+        <h2>Monitoring</h2>
         <p class="muted">
-            EMI status updates (activation, payments, completion) will
-            appear automatically while this page is open.
+            EMI activation and payments occur on-chain.<br />
+            Receiver does not need to stay online.
         </p>
     </section>
 
     <!-- ================= FOOTER ================= -->
     <footer class="footer">
         <p>
-            🧾 EMI is pull-based & secure.<br />
-            🔒 No funds are held by this app.
+            🧾 Pull-based EMI system<br />
+            🔒 No funds held by this application
         </p>
     </footer>
 
-    <!-- ================= SCRIPTS ================= -->
     <script>
         function goBack() {
             window.location.href = "./home.html";
